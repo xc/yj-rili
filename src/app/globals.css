@@ -1,26 +1,92 @@
-@import "tailwindcss";
+@layer theme, base, components, utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-outfit);
+  --color-ink: #1c1917;
+  --color-ink-soft: #2a2522;
+  --color-paper: #f3ede3;
+  --color-paper-deep: #e8dfd0;
+  --color-cinnabar: #d94a2c;
+  --color-cinnabar-deep: #b5361f;
+  --color-moss: #3f4a3d;
+  --color-rule: #d9d0c3;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  font-family: var(--font-outfit), sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.writing-vertical {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.35em;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal {
+  animation: rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rili-input.ant-input-affix-wrapper,
+.rili-input.ant-input {
+  background: #fffdf8 !important;
+  border-color: var(--color-rule) !important;
+  border-radius: 2px !important;
+}
+
+.rili-input.ant-input-affix-wrapper:hover,
+.rili-input.ant-input:hover,
+.rili-input.ant-input-affix-wrapper:focus,
+.rili-input.ant-input-affix-wrapper-focused,
+.rili-input.ant-input:focus {
+  border-color: var(--color-ink) !important;
+  box-shadow: none !important;
+}
+
+.rili-login-btn.ant-btn-primary {
+  height: 48px;
+  border-radius: 2px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--color-cinnabar) !important;
+  border-color: var(--color-cinnabar) !important;
+  box-shadow: none !important;
+}
+
+.rili-login-btn.ant-btn-primary:hover {
+  background: var(--color-cinnabar-deep) !important;
+  border-color: var(--color-cinnabar-deep) !important;
 }
