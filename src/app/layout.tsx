@@ -14,14 +14,14 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Rili",
-  description: "A quiet ledger for the days you intend to keep.",
+  title: "电梯检测系统",
+  description: "一本安静的账册，记下你打算守住的日子。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="zh-CN"
       className={`${fraunces.variable} ${outfit.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans">

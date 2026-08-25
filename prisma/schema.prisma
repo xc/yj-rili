@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model YjUser {
+  id        Int                      @id @default(autoincrement())
+  firstname String                   @db.VarChar(64)
+  lastname  String                   @db.VarChar(64)
+  username  String                   @unique @db.VarChar(64)
+  password  String                   @db.VarChar(255)
+  roles     UserRole[]
+  tasks     YjTask[]
+  libraries YjVerificationLibrary[]
+
+  @@map("yj_user")
+}
+
+model UserRole {
+  userId Int    @map("user_id")
+  role   String @db.VarChar(32)
+  user   YjUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, role])
+  @@map("user_role")
+}
+
+model YjTask {
+  id           Int            @id @default(autoincrement())
+  name         String         @db.VarChar(128)
+  status       Int
+  creator      Int
+  createdAt    DateTime       @default(now()) @map("created_at")
+  templateId   Int            @map("template_id")
+  maintainerId Int            @map("maintainer_id")
+  videos       Json           @default("[]")
+  creatorUser  YjUser         @relation(fields: [creator], references: [id])
+  template     YjTaskTemplate @relation(fields: [templateId], references: [id])
+  maintainer   YjMaintainer   @relation(fields: [maintainerId], references: [id])
+
+  @@map("yj_task")
+}
+
+model YjTaskTemplate {
+  id    Int      @id @default(autoincrement())
+  name  String   @db.VarChar(128)
+  tasks YjTask[]
+
+  @@map("yj_task_template")
+}
+
+model YjMaintainer {
+  id    Int      @id @default(autoincrement())
+  name  String   @db.VarChar(128)
+  tasks YjTask[]
+
+  @@map("yj_maintainer")
+}
+
+model YjVerificationLibrary {
+  id         Int      @id @default(autoincrement())
+  type       String   @db.VarChar(64)
+  source     String   @db.VarChar(255)
+  thumbnail  String   @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+  creatorId  Int      @map("creator_id")
+  context    String   @db.VarChar(255)
+  creator    YjUser   @relation(fields: [creatorId], references: [id])
+
+  @@map("yj_verification_library")
+}

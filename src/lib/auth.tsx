@@ -2,64 +2,83 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { Get, Post } from "@/lib/clientUtil";
+import { AUTH_TOKEN_KEY } from "@/lib/token";
 
-const SESSION_KEY = "rili.session";
-
-type Session = {
+export type AuthUser = {
+  id: number;
   username: string;
+  firstname: string;
+  lastname: string;
+  roles: string[];
 };
 
 type AuthContextValue = {
-  user: Session | null;
+  user: AuthUser | null;
   ready: boolean;
-  login: (username: string) => void;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function readSession(): Session | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Session;
-    if (!parsed?.username) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setUser(readSession());
-    setReady(true);
+    let cancelled = false;
+
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+      setReady(true);
+      return;
+    }
+
+    Get<{ user: AuthUser }>("/api/auth/me")
+      .then((data) => {
+        if (!cancelled) setUser(data.user);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          setUser(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = useCallback(async (username: string, password: string) => {
+    const data = await Post<{ token: string; user: AuthUser }>(
+      "/api/auth/login",
+      { username, password },
+    );
+    localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+    setUser(data.user);
+  }, []);
+
+  const logout = useCallback(async () => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    await Post("/api/auth/logout");
+    setUser(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      ready,
-      login: (username: string) => {
-        const session = { username };
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        setUser(session);
-      },
-      logout: () => {
-        sessionStorage.removeItem(SESSION_KEY);
-        setUser(null);
-      },
-    }),
-    [user, ready],
+    () => ({ user, ready, login, logout }),
+    [user, ready, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

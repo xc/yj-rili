@@ -1,81 +1,105 @@
 "use client";
 
 import {
-  BookOutlined,
-  CalendarOutlined,
+  AuditOutlined,
+  ControlOutlined,
+  DashboardOutlined,
   LogoutOutlined,
-  SunOutlined,
+  ProfileOutlined,
+  SettingOutlined,
+  SnippetsOutlined,
+  TeamOutlined,
+  ToolOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
+import { Menu } from "antd";
+import type { MenuProps } from "antd";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 
-const navItems = [
-  { href: "/", label: "Today", icon: SunOutlined, end: true },
-  { href: "/calendar", label: "Calendar", icon: CalendarOutlined, end: false },
-  { href: "/notes", label: "Notes", icon: BookOutlined, end: false },
-] as const;
+const items: MenuProps["items"] = [
+  {
+    key: "/",
+    icon: <DashboardOutlined />,
+    label: "面板",
+  },
+  {
+    key: "tasks",
+    icon: <UnorderedListOutlined />,
+    label: "任务",
+    children: [
+      { key: "/tasks", icon: <ProfileOutlined />, label: "任务管理" },
+      { key: "/tasks/library", icon: <AuditOutlined />, label: "校验库" },
+    ],
+  },
+  {
+    key: "settings",
+    icon: <SettingOutlined />,
+    label: "设置",
+    children: [
+      { key: "/settings/users", icon: <TeamOutlined />, label: "用户管理" },
+      {
+        key: "/settings/templates",
+        icon: <SnippetsOutlined />,
+        label: "模板管理",
+      },
+      {
+        key: "/settings/maintainers",
+        icon: <ToolOutlined />,
+        label: "维保员管理",
+      },
+      { key: "/settings/system", icon: <ControlOutlined />, label: "系统设置" },
+    ],
+  },
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
-  const onLogout = () => {
-    logout();
+  const onLogout = async () => {
+    await logout();
     router.replace("/login");
+  };
+
+  const onMenuClick: MenuProps["onClick"] = ({ key }) => {
+    if (key.startsWith("/")) {
+      router.push(key);
+    }
   };
 
   return (
     <div className="flex min-h-screen bg-paper">
-      <aside className="flex w-[15.5rem] shrink-0 flex-col border-r border-rule bg-ink text-paper">
-        <div className="px-6 pt-8 pb-6">
-          <p className="font-sans text-[11px] tracking-[0.38em] uppercase text-cinnabar">
-            Rili
-          </p>
-          <p className="mt-3 font-display text-2xl leading-none">Desk</p>
+      <aside className="flex w-[15.5rem] shrink-0 flex-col border-r border-rule bg-ink text-white">
+        <div className="flex h-14 items-center px-5">
+          <Link href="/" className="flex items-center">
+            <img src="/logo.png" alt="logo" className="h-12 w-auto" />
+          </Link>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 px-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.end
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={[
-                  "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm tracking-wide transition-colors",
-                  isActive
-                    ? "bg-cinnabar text-paper"
-                    : "text-paper/65 hover:bg-ink-soft hover:text-paper",
-                ].join(" ")}
-              >
-                <Icon />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[pathname]}
+          defaultOpenKeys={["tasks", "settings"]}
+          items={items}
+          onClick={onMenuClick}
+          className="rili-sider-menu flex-1"
+        />
 
         <div className="mt-auto border-t border-white/10 px-4 py-4">
-          <p className="truncate px-2 text-xs tracking-[0.16em] uppercase text-paper/40">
-            Signed in
-          </p>
-          <p className="truncate px-2 pt-1 font-display text-lg">
-            {user?.username}
-          </p>
+          <p className="truncate px-2 text-xs text-white">已登录</p>
+          <p className="truncate px-2 pt-1 text-white">{user?.username}</p>
           <button
             type="button"
             onClick={onLogout}
-            className="mt-3 flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-paper/60 transition-colors hover:bg-ink-soft hover:text-paper"
+            className="mt-3 flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-white transition-colors hover:bg-ink-soft"
           >
             <LogoutOutlined />
-            Log out
+            退出
           </button>
         </div>
       </aside>

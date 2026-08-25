@@ -4,16 +4,17 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 @theme inline {
-  --font-display: var(--font-fraunces);
-  --font-sans: var(--font-outfit);
-  --color-ink: #1c1917;
-  --color-ink-soft: #2a2522;
-  --color-paper: #f3ede3;
-  --color-paper-deep: #e8dfd0;
-  --color-cinnabar: #d94a2c;
-  --color-cinnabar-deep: #b5361f;
+  --font-display: var(--font-fraunces), "Songti SC", "Noto Serif SC", serif;
+  --font-sans: var(--font-outfit), "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --color-ink: #001529;
+  --color-ink-soft: #0a2a4a;
+  --color-paper: #f5f8fc;
+  --color-paper-deep: #e8eef6;
+  --color-cinnabar: #1677ff;
+  --color-cinnabar-deep: #0958d9;
   --color-moss: #3f4a3d;
-  --color-rule: #d9d0c3;
+  --color-rule: #d6e0ea;
 }
 
 html,
@@ -25,8 +26,22 @@ body {
   margin: 0;
   color: var(--color-ink);
   background: var(--color-paper);
-  font-family: var(--font-outfit), sans-serif;
+  font-family: var(--font-outfit), "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
 }
 
 body::after {
@@ -39,48 +54,35 @@ body::after {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.writing-vertical {
-  writing-mode: vertical-rl;
-  letter-spacing: 0.35em;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.reveal {
-  animation: rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.rili-input.ant-input-affix-wrapper,
-.rili-input.ant-input {
-  background: #fffdf8 !important;
-  border-color: var(--color-rule) !important;
+.rili-login-form .rili-input.ant-input-affix-wrapper,
+.rili-login-form .rili-input.ant-input {
+  background: #ffffff !important;
+  border: 1px solid var(--color-rule) !important;
   border-radius: 2px !important;
+  padding: 10px !important;
 }
 
-.rili-input.ant-input-affix-wrapper:hover,
-.rili-input.ant-input:hover,
-.rili-input.ant-input-affix-wrapper:focus,
-.rili-input.ant-input-affix-wrapper-focused,
-.rili-input.ant-input:focus {
+.rili-login-form .rili-input.ant-input-affix-wrapper > input.ant-input {
+  padding: 0 !important;
+}
+
+.rili-login-form .rili-input.ant-input-affix-wrapper:hover,
+.rili-login-form .rili-input.ant-input:hover,
+.rili-login-form .rili-input.ant-input-affix-wrapper:focus,
+.rili-login-form .rili-input.ant-input-affix-wrapper-focused,
+.rili-login-form .rili-input.ant-input:focus {
   border-color: var(--color-ink) !important;
   box-shadow: none !important;
 }
 
+.rili-login-form .ant-form-item-label > label {
+  font-size: 16px !important;
+  height: auto !important;
+}
+
 .rili-login-btn.ant-btn-primary {
-  height: 48px;
   border-radius: 2px;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   background: var(--color-cinnabar) !important;
   border-color: var(--color-cinnabar) !important;
   box-shadow: none !important;
@@ -89,4 +91,39 @@ body::after {
 .rili-login-btn.ant-btn-primary:hover {
   background: var(--color-cinnabar-deep) !important;
   border-color: var(--color-cinnabar-deep) !important;
+}
+
+.rili-sider-menu.ant-menu {
+  background: transparent !important;
+  border-inline-end: none !important;
+  color: #ffffff !important;
+}
+
+.rili-sider-menu.ant-menu .ant-menu-item,
+.rili-sider-menu.ant-menu .ant-menu-submenu-title,
+.rili-sider-menu.ant-menu .ant-menu-title-content,
+.rili-sider-menu.ant-menu .ant-menu-item-icon,
+.rili-sider-menu.ant-menu .ant-menu-submenu-arrow {
+  color: #ffffff !important;
+}
+
+.rili-sider-menu.ant-menu .ant-menu-item-selected,
+.rili-sider-menu.ant-menu .ant-menu-item-selected:hover {
+  background: #0958d9 !important;
+}
+
+.rili-task-table .rili-task-row-odd > td {
+  background: #ffffff !important;
+}
+
+.rili-task-table .rili-task-row-even > td {
+  background: #eef4fb !important;
+}
+
+.rili-task-table .ant-table-tbody > tr.rili-task-row-odd:hover > td {
+  background: #f5f8fc !important;
+}
+
+.rili-task-table .ant-table-tbody > tr.rili-task-row-even:hover > td {
+  background: #e3edf8 !important;
 }
