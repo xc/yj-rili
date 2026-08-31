@@ -15,9 +15,13 @@ export async function POST(request: Request) {
     return writeError("未登录", 401);
   }
 
-  let body: { name?: string; maintainerId?: number };
+  let body: { name?: string; maintainerId?: number; templateId?: number };
   try {
-    body = (await request.json()) as { name?: string; maintainerId?: number };
+    body = (await request.json()) as {
+      name?: string;
+      maintainerId?: number;
+      templateId?: number;
+    };
   } catch {
     return writeError("请求无效");
   }
@@ -32,9 +36,14 @@ export async function POST(request: Request) {
     return writeError("请选择维保员");
   }
 
+  const templateId = Number(body.templateId);
+  if (!Number.isInteger(templateId) || templateId <= 0) {
+    return writeError("请选择模板");
+  }
+
   const [template, maintainer] = await Promise.all([
-    prisma.yjTaskTemplate.findFirst({
-      orderBy: { id: "asc" },
+    prisma.yjTaskTemplate.findUnique({
+      where: { id: templateId },
       select: { id: true },
     }),
     prisma.yjMaintainer.findUnique({
@@ -43,7 +52,7 @@ export async function POST(request: Request) {
     }),
   ]);
   if (!template) {
-    return writeError("请先创建模板");
+    return writeError("模板不存在");
   }
   if (!maintainer) {
     return writeError("维保员不存在");
@@ -67,6 +76,7 @@ export async function POST(request: Request) {
       status: task.status,
       creator: task.creator,
       maintainerId: task.maintainerId,
+      templateId: task.templateId,
       createdAt: task.createdAt.toISOString(),
     },
   });

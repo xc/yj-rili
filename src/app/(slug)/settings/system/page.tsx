@@ -9,7 +9,7 @@ export default function SystemSettingsPage() {
       <Form
         className="mt-6 max-w-md"
         layout="vertical"
-        initialValues={{ siteName: "日历", enabled: true }}
+        initialValues={{ enabled: true }}
       >
         <Form.Item label="启用系统" name="enabled" valuePropName="checked">
           <Switch />

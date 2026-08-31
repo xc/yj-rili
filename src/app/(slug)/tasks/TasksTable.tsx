@@ -10,6 +10,7 @@ type TaskRow = {
   id: number;
   name: string;
   status: string;
+  template: string;
   maintainer: string;
   creator: string;
   createdAt: string;
@@ -54,6 +55,7 @@ export function TasksTable({
     { title: "ID", dataIndex: "id", key: "id", width: 80 },
     { title: "名称", dataIndex: "name", key: "name" },
     { title: "状态", dataIndex: "status", key: "status", width: 120 },
+    { title: "模板", dataIndex: "template", key: "template", width: 140 },
     { title: "维保员", dataIndex: "maintainer", key: "maintainer", width: 140 },
     { title: "创建人", dataIndex: "creator", key: "creator", width: 140 },
     { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 200 },

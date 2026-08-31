@@ -9,13 +9,19 @@ import { Post } from "@/lib/clientUtil";
 
 export function CreateTaskButton({
   maintainers,
+  templates,
 }: {
   maintainers: { id: number; name: string }[];
+  templates: { id: number; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [maintainerOptions, setMaintainerOptions] = useState(maintainers);
-  const [form] = Form.useForm<{ name: string; maintainerId: number }>();
+  const [form] = Form.useForm<{
+    name: string;
+    maintainerId: number;
+    templateId: number;
+  }>();
   const router = useRouter();
 
   const onCreate = async () => {
@@ -25,6 +31,7 @@ export function CreateTaskButton({
       await Post("/api/tasks", {
         name: values.name.trim(),
         maintainerId: values.maintainerId,
+        templateId: values.templateId,
       });
       message.success("创建成功");
       setOpen(false);
@@ -65,6 +72,19 @@ export function CreateTaskButton({
             rules={[{ required: true, message: "请输入名称" }]}
           >
             <Input autoComplete="off" />
+          </Form.Item>
+          <Form.Item
+            name="templateId"
+            label="模板"
+            rules={[{ required: true, message: "请选择模板" }]}
+          >
+            <Select
+              placeholder="请选择模板"
+              options={templates.map((item) => ({
+                value: item.id,
+                label: item.name,
+              }))}
+            />
           </Form.Item>
           <Form.Item label="维保员" required>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -18,7 +18,7 @@ export default async function TasksPage({
     50,
   );
 
-  const [total, tasks, maintainers] = await Promise.all([
+  const [total, tasks, maintainers, templates] = await Promise.all([
     prisma.yjTask.count(),
     prisma.yjTask.findMany({
       orderBy: { id: "desc" },
@@ -31,9 +31,16 @@ export default async function TasksPage({
         maintainer: {
           select: { name: true },
         },
+        template: {
+          select: { name: true },
+        },
       },
     }),
     prisma.yjMaintainer.findMany({
+      orderBy: { id: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.yjTaskTemplate.findMany({
       orderBy: { id: "asc" },
       select: { id: true, name: true },
     }),
@@ -43,7 +50,7 @@ export default async function TasksPage({
     <div className="p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-xl">任务管理</h1>
-        <CreateTaskButton maintainers={maintainers} />
+        <CreateTaskButton maintainers={maintainers} templates={templates} />
       </div>
       <div className="mt-4">
         <TasksTable
@@ -54,6 +61,7 @@ export default async function TasksPage({
             id: task.id,
             name: task.name,
             status: getTaskStatusLabel(task.status),
+            template: task.template.name,
             maintainer: task.maintainer.name,
             creator: `${task.creatorUser.firstname} ${task.creatorUser.lastname}`,
             createdAt: formatDateTime(task.createdAt),

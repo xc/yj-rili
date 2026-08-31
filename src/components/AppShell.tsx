@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AuditOutlined,
   ControlOutlined,
   DashboardOutlined,
   LogoutOutlined,
@@ -29,10 +28,7 @@ const items: MenuProps["items"] = [
     key: "tasks",
     icon: <UnorderedListOutlined />,
     label: "任务",
-    children: [
-      { key: "/tasks", icon: <ProfileOutlined />, label: "任务管理" },
-      { key: "/tasks/library", icon: <AuditOutlined />, label: "校验库" },
-    ],
+    children: [{ key: "/tasks", icon: <ProfileOutlined />, label: "任务管理" }],
   },
   {
     key: "settings",
