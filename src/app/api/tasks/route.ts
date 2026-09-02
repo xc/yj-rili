@@ -1,6 +1,6 @@
 import { getBearerToken, verifyAuthToken, type AuthTokenPayload } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
-import { writeError, writeResponse } from "@/lib/util";
+import { TaskStatus, writeError, writeResponse } from "@/lib/util";
 
 export async function POST(request: Request) {
   const token = getBearerToken(request);
@@ -61,11 +61,14 @@ export async function POST(request: Request) {
   const task = await prisma.yjTask.create({
     data: {
       name,
-      status: 0,
+      status: TaskStatus.Ongoing,
       creator: Number(payload.sub),
       templateId: template.id,
       maintainerId: maintainer.id,
       videos: [],
+      comment: "",
+      resultDetail: [],
+      logs: [],
     },
   });
 
