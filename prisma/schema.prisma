@@ -13,9 +13,11 @@ model YjUser {
   lastname  String                   @db.VarChar(64)
   username  String                   @unique @db.VarChar(64)
   password  String                   @db.VarChar(255)
+  branchId  Int                      @map("branch_id")
   roles     UserRole[]
   tasks     YjTask[]
   libraries YjVerificationLibrary[]
+  branch    YjBranch                 @relation(fields: [branchId], references: [id])
 
   @@map("yj_user")
 }
@@ -37,10 +39,15 @@ model YjTask {
   createdAt    DateTime       @default(now()) @map("created_at")
   templateId   Int            @map("template_id")
   maintainerId Int            @map("maintainer_id")
+  branchId     Int            @map("branch_id")
   videos       Json           @default("[]")
+  comment      String         @db.Text
+  resultDetail Json           @default("[]") @map("result_detail")
+  logs         Json           @default("[]")
   creatorUser  YjUser         @relation(fields: [creator], references: [id])
   template     YjTaskTemplate @relation(fields: [templateId], references: [id])
   maintainer   YjMaintainer   @relation(fields: [maintainerId], references: [id])
+  branch       YjBranch       @relation(fields: [branchId], references: [id])
 
   @@map("yj_task")
 }
@@ -48,6 +55,7 @@ model YjTask {
 model YjTaskTemplate {
   id    Int      @id @default(autoincrement())
   name  String   @db.VarChar(128)
+  rule  Json     @default("{}")
   tasks YjTask[]
 
   @@map("yj_task_template")
@@ -72,4 +80,13 @@ model YjVerificationLibrary {
   creator    YjUser   @relation(fields: [creatorId], references: [id])
 
   @@map("yj_verification_library")
+}
+
+model YjBranch {
+  id    Int      @id @default(autoincrement())
+  name  String   @db.VarChar(128)
+  users YjUser[]
+  tasks YjTask[]
+
+  @@map("yj_branch")
 }
