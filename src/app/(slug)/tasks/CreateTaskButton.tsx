@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CreateMaintainerButton } from "@/components/CreateMaintainerButton";
 import { Post } from "@/lib/clientUtil";
+import { TASKS_CHANGED_EVENT } from "./taskListQuery";
 
 export function CreateTaskButton({
   maintainers,
@@ -36,6 +37,7 @@ export function CreateTaskButton({
       message.success("创建成功");
       setOpen(false);
       form.resetFields();
+      window.dispatchEvent(new Event(TASKS_CHANGED_EVENT));
       router.push("/tasks?page=1");
     } catch (error) {
       message.error(error instanceof Error ? error.message : "创建失败");

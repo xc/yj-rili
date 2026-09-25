@@ -1,6 +1,71 @@
 import { getBearerToken, verifyAuthToken, type AuthTokenPayload } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
-import { TaskStatus, writeError, writeResponse } from "@/lib/util";
+import { getRequestUser } from "@/lib/requestAuth";
+import { tasksWhereForUser } from "@/lib/taskAccess";
+import {
+  formatDateTime,
+  getTaskStatusLabel,
+  TaskStatus,
+  writeError,
+  writeResponse,
+} from "@/lib/util";
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 10;
+
+export async function GET(request: Request) {
+  const user = await getRequestUser(request);
+  if (!user) {
+    return writeError("未登录", 401);
+  }
+
+  const url = new URL(request.url);
+  const page = Math.max(Number(url.searchParams.get("page")) || DEFAULT_PAGE, 1);
+  const pageSize = Math.min(
+    Math.max(Number(url.searchParams.get("pageSize")) || DEFAULT_PAGE_SIZE, 1),
+    50,
+  );
+  const parsedBranch = Number(url.searchParams.get("branch"));
+  const branchId =
+    Number.isInteger(parsedBranch) && parsedBranch > 0 ? parsedBranch : null;
+  const where = tasksWhereForUser(user, branchId);
+
+  const [total, tasks] = await Promise.all([
+    prisma.yjTask.count({ where }),
+    prisma.yjTask.findMany({
+      where,
+      orderBy: { id: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        creatorUser: {
+          select: { firstname: true, lastname: true },
+        },
+        maintainer: {
+          select: { name: true },
+        },
+        template: {
+          select: { name: true },
+        },
+      },
+    }),
+  ]);
+
+  return writeResponse({
+    total,
+    page,
+    pageSize,
+    tasks: tasks.map((task) => ({
+      id: task.id,
+      name: task.name,
+      status: getTaskStatusLabel(task.status),
+      template: task.template.name,
+      maintainer: task.maintainer.name,
+      creator: `${task.creatorUser.firstname} ${task.creatorUser.lastname}`,
+      createdAt: formatDateTime(task.createdAt),
+    })),
+  });
+}
 
 export async function POST(request: Request) {
   const token = getBearerToken(request);
@@ -41,7 +106,11 @@ export async function POST(request: Request) {
     return writeError("请选择模板");
   }
 
-  const [template, maintainer] = await Promise.all([
+  const [creator, template, maintainer] = await Promise.all([
+    prisma.yjUser.findUnique({
+      where: { id: Number(payload.sub) },
+      select: { id: true, branchId: true },
+    }),
     prisma.yjTaskTemplate.findUnique({
       where: { id: templateId },
       select: { id: true },
@@ -51,6 +120,9 @@ export async function POST(request: Request) {
       select: { id: true },
     }),
   ]);
+  if (!creator) {
+    return writeError("未登录", 401);
+  }
   if (!template) {
     return writeError("模板不存在");
   }
@@ -62,7 +134,8 @@ export async function POST(request: Request) {
     data: {
       name,
       status: TaskStatus.Ongoing,
-      creator: Number(payload.sub),
+      creator: creator.id,
+      branchId: creator.branchId,
       templateId: template.id,
       maintainerId: maintainer.id,
       videos: [],
@@ -78,6 +151,7 @@ export async function POST(request: Request) {
       name: task.name,
       status: task.status,
       creator: task.creator,
+      branchId: task.branchId,
       maintainerId: task.maintainerId,
       templateId: task.templateId,
       createdAt: task.createdAt.toISOString(),

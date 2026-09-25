@@ -20,6 +20,9 @@ export async function GET(request: Request) {
         roles: {
           select: { role: true },
         },
+        branch: {
+          select: { name: true },
+        },
       },
     });
 
@@ -34,6 +37,7 @@ export async function GET(request: Request) {
         firstname: user.firstname,
         lastname: user.lastname,
         roles: user.roles.map((item) => item.role),
+        branch: user.branch.name,
       },
     });
   } catch {

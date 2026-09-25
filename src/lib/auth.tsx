@@ -18,6 +18,7 @@ export type AuthUser = {
   firstname: string;
   lastname: string;
   roles: string[];
+  branch: string;
 };
 
 type AuthContextValue = {

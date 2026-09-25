@@ -1,46 +1,19 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
-import { formatDateTime, getTaskStatusLabel } from "@/lib/util";
 import { CreateTaskButton } from "./CreateTaskButton";
-import { TasksTable } from "./TasksTable";
+import { TasksList } from "./TasksList";
 
-const DEFAULT_PAGE = 1;
-const DEFAULT_PAGE_SIZE = 10;
-
-export default async function TasksPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string; pageSize?: string }>;
-}) {
-  const params = await searchParams;
-  const page = Math.max(Number(params.page) || DEFAULT_PAGE, 1);
-  const pageSize = Math.min(
-    Math.max(Number(params.pageSize) || DEFAULT_PAGE_SIZE, 1),
-    50,
-  );
-
-  const [total, tasks, maintainers, templates] = await Promise.all([
-    prisma.yjTask.count(),
-    prisma.yjTask.findMany({
-      orderBy: { id: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
-        creatorUser: {
-          select: { firstname: true, lastname: true },
-        },
-        maintainer: {
-          select: { name: true },
-        },
-        template: {
-          select: { name: true },
-        },
-      },
-    }),
+export default async function TasksPage() {
+  const [maintainers, templates, branches] = await Promise.all([
     prisma.yjMaintainer.findMany({
       orderBy: { id: "asc" },
       select: { id: true, name: true },
     }),
     prisma.yjTaskTemplate.findMany({
+      orderBy: { id: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.yjBranch.findMany({
       orderBy: { id: "asc" },
       select: { id: true, name: true },
     }),
@@ -52,22 +25,9 @@ export default async function TasksPage({
         <h1 className="text-xl">任务管理</h1>
         <CreateTaskButton maintainers={maintainers} templates={templates} />
       </div>
-      <div className="mt-4">
-        <TasksTable
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          tasks={tasks.map((task) => ({
-            id: task.id,
-            name: task.name,
-            status: getTaskStatusLabel(task.status),
-            template: task.template.name,
-            maintainer: task.maintainer.name,
-            creator: `${task.creatorUser.firstname} ${task.creatorUser.lastname}`,
-            createdAt: formatDateTime(task.createdAt),
-          }))}
-        />
-      </div>
+      <Suspense>
+        <TasksList branches={branches} />
+      </Suspense>
     </div>
   );
 }

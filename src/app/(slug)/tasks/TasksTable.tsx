@@ -7,8 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Post } from "@/lib/clientUtil";
 import { TaskDetailModal } from "./TaskDetailModal";
+import { taskListQuery } from "./taskListQuery";
 
-type TaskRow = {
+export type TaskRow = {
   id: number;
   name: string;
   status: string;
@@ -31,12 +32,18 @@ export function TasksTable({
   tasks,
   page,
   pageSize,
+  branchId,
   total,
+  loading,
+  onChanged,
 }: {
   tasks: TaskRow[];
   page: number;
   pageSize: number;
+  branchId: number | null;
   total: number;
+  loading?: boolean;
+  onChanged?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -45,7 +52,13 @@ export function TasksTable({
   const onChange = (pagination: TablePaginationConfig) => {
     const nextPage = pagination.current ?? 1;
     const nextSize = pagination.pageSize ?? pageSize;
-    router.push(`${pathname}?page=${nextPage}&pageSize=${nextSize}`);
+    router.push(
+      `${pathname}?${taskListQuery({
+        page: nextPage,
+        pageSize: nextSize,
+        branchId,
+      })}`,
+    );
   };
 
   const onDelete = (record: TaskRow) => {
@@ -58,7 +71,7 @@ export function TasksTable({
       onOk: async () => {
         await Post("/api/tasks/delete", { id: record.id });
         message.success("已删除");
-        router.refresh();
+        onChanged?.();
       },
     });
   };
@@ -139,6 +152,7 @@ export function TasksTable({
           index % 2 === 0 ? "rili-task-row-odd" : "rili-task-row-even"
         }
         dataSource={tasks}
+        loading={loading}
         rowKey="id"
         onChange={onChange}
         pagination={{
@@ -154,6 +168,7 @@ export function TasksTable({
         taskId={detail?.id ?? null}
         open={detail !== null}
         onClose={() => setDetail(null)}
+        onChanged={onChanged}
       />
     </>
   );

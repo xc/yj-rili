@@ -11,9 +11,8 @@ type CheckRow = {
   start_time: string;
   end_time: string;
   type: "behavior" | "part";
+  labels: string[];
   area?: string;
-  behavior_name?: string;
-  part_name?: string;
   part_id?: string;
 };
 
@@ -70,10 +69,6 @@ const statusTone: Record<string, { color: string; background: string }> = {
   已检测: { color: "#08979c", background: "#e6fffb" },
 };
 
-function resultName(record: CheckRow) {
-  return record.type === "behavior" ? record.behavior_name : record.part_name;
-}
-
 function requiredNames(rule: TaskTemplate["rule"] | undefined) {
   const mandatory = rule?.required;
   return {
@@ -87,14 +82,12 @@ function isRequiredHit(
   behaviors: string[],
   components: string[],
 ) {
-  const name = resultName(record);
-  if (!name) {
-    return false;
-  }
+  const names = record.labels;
+
   if (record.type === "behavior") {
-    return behaviors.includes(name);
+    return names.some((name) => behaviors.includes(name));
   }
-  return components.includes(name);
+  return names.some((name) => components.includes(name));
 }
 
 function timeToSeconds(value: string) {
@@ -115,10 +108,12 @@ export function TaskDetailModal({
   taskId,
   open,
   onClose,
+  onChanged,
 }: {
   taskId: number | null;
   open: boolean;
   onClose: () => void;
+  onChanged?: () => void;
 }) {
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -173,12 +168,14 @@ export function TaskDetailModal({
     ...requiredBehaviors.filter(
       (name) =>
         !results.some(
-          (row) => row.type === "behavior" && row.behavior_name === name,
+          (row) => row.type === "behavior" && row.labels.includes(name),
         ),
     ),
     ...requiredComponents.filter(
       (name) =>
-        !results.some((row) => row.type === "part" && row.part_name === name),
+        !results.some(
+          (row) => row.type === "part" && row.labels.includes(name),
+        ),
     ),
   ];
 
@@ -209,6 +206,7 @@ export function TaskDetailModal({
       });
       message.success(passed ? "已通过" : "已驳回");
       resetAndClose();
+      onChanged?.();
       router.refresh();
     } catch (error) {
       message.error(error instanceof Error ? error.message : "操作失败");
@@ -276,66 +274,69 @@ export function TaskDetailModal({
                   children: (
                     <>
                       {missingRequired.length > 0 ? (
-                        <div className="mb-2 text-sm" style={{ color: "#cf1322" }}>
+                        <div
+                          className="mb-2 text-sm"
+                          style={{ color: "#cf1322" }}
+                        >
                           缺失必检：{missingRequired.join("、")}
                         </div>
                       ) : null}
                       <Table
-                      className="rili-task-table"
-                      size="small"
-                      pagination={false}
-                      dataSource={results}
-                      rowKey="id"
-                      columns={[
-                        {
-                          title: "开始时间",
-                          dataIndex: "start_time",
-                          width: 90,
-                          render: (time: string) => (
-                            <button
-                              type="button"
-                              style={{ color: "#1677ff" }}
-                              className="hover:underline"
-                              onClick={() => seekTo(time)}
-                            >
-                              {time}
-                            </button>
-                          ),
-                        },
-                        {
-                          title: "结束时间",
-                          dataIndex: "end_time",
-                          width: 90,
-                        },
-                        {
-                          title: "类型",
-                          dataIndex: "type",
-                          width: 80,
-                          render: (type: CheckRow["type"]) =>
-                            resultTypeLabel[type] ?? type,
-                        },
-                        {
-                          title: "名称",
-                          key: "name",
-                          render: (_: unknown, record: CheckRow) =>
-                            resultName(record),
-                        },
-                        {
-                          title: "",
-                          key: "required",
-                          width: 48,
-                          align: "center" as const,
-                          render: (_: unknown, record: CheckRow) =>
-                            isRequiredHit(
-                              record,
-                              requiredBehaviors,
-                              requiredComponents,
-                            ) ? (
-                              <CheckOutlined style={{ color: "#389e0d" }} />
-                            ) : null,
-                        },
-                      ]}
-                    />
+                        className="rili-task-table"
+                        size="small"
+                        pagination={false}
+                        dataSource={results}
+                        rowKey="id"
+                        columns={[
+                          {
+                            title: "开始时间",
+                            dataIndex: "start_time",
+                            width: 90,
+                            render: (time: string) => (
+                              <button
+                                type="button"
+                                style={{ color: "#1677ff" }}
+                                className="hover:underline"
+                                onClick={() => seekTo(time)}
+                              >
+                                {time}
+                              </button>
+                            ),
+                          },
+                          {
+                            title: "结束时间",
+                            dataIndex: "end_time",
+                            width: 90,
+                          },
+                          {
+                            title: "类型",
+                            dataIndex: "type",
+                            width: 80,
+                            render: (type: CheckRow["type"]) =>
+                              resultTypeLabel[type] ?? type,
+                          },
+                          {
+                            title: "名称",
+                            key: "name",
+                            render: (_: unknown, record: CheckRow) =>
+                              record.labels.join("、"),
+                          },
+                          {
+                            title: "匹配?",
+                            key: "required",
+                            width: 72,
+                            align: "center" as const,
+                            render: (_: unknown, record: CheckRow) =>
+                              isRequiredHit(
+                                record,
+                                requiredBehaviors,
+                                requiredComponents,
+                              ) ? (
+                                <CheckOutlined style={{ color: "#389e0d" }} />
+                              ) : null,
+                          },
+                        ]}
+                      />
                     </>
                   ),
                 },

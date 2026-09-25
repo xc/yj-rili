@@ -1,5 +1,6 @@
-import { getBearerToken, verifyAuthToken } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
+import { getRequestUser } from "@/lib/requestAuth";
+import { canAccessTask } from "@/lib/taskAccess";
 import {
   formatDateTime,
   TaskStatus,
@@ -11,14 +12,8 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const token = getBearerToken(request);
-  if (!token) {
-    return writeError("未登录", 401);
-  }
-
-  try {
-    await verifyAuthToken(token);
-  } catch {
+  const user = await getRequestUser(request);
+  if (!user) {
     return writeError("未登录", 401);
   }
 
@@ -35,6 +30,8 @@ export async function GET(
       status: true,
       comment: true,
       createdAt: true,
+      creator: true,
+      branchId: true,
       resultDetail: true,
       logs: true,
       template: {
@@ -49,6 +46,9 @@ export async function GET(
 
   if (!task) {
     return writeError("任务不存在", 404);
+  }
+  if (!canAccessTask(user, task)) {
+    return writeError("无权限", 403);
   }
 
   return writeResponse({
@@ -69,14 +69,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const token = getBearerToken(request);
-  if (!token) {
-    return writeError("未登录", 401);
-  }
-
-  try {
-    await verifyAuthToken(token);
-  } catch {
+  const user = await getRequestUser(request);
+  if (!user) {
     return writeError("未登录", 401);
   }
 
@@ -101,10 +95,13 @@ export async function POST(
 
   const existing = await prisma.yjTask.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, creator: true, branchId: true },
   });
   if (!existing) {
     return writeError("任务不存在", 404);
+  }
+  if (!canAccessTask(user, existing)) {
+    return writeError("无权限", 403);
   }
   if (existing.status !== TaskStatus.Detected) {
     return writeError("当前状态不可审核");

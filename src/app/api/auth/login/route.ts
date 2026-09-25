@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   const user = await prisma.yjUser.findUnique({
     where: { username },
-    include: { roles: true },
+    include: { roles: true, branch: { select: { name: true } } },
   });
   if (!user || !(await verifyPassword(password, user.password))) {
     return writeError("用户名或密码错误", 401);
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       firstname: user.firstname,
       lastname: user.lastname,
       roles: user.roles.map((item) => item.role),
+      branch: user.branch.name,
     },
   });
 }
