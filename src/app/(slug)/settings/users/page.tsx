@@ -3,6 +3,8 @@ import { roleLabels } from "@/lib/roles";
 import { CreateUserButton } from "@/components/CreateUserButton";
 import { UsersTable } from "./UsersTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function UsersPage() {
   const [users, branches] = await Promise.all([
     prisma.yjUser.findMany({

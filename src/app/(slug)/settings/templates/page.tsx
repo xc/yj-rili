@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { TemplatesTable } from "./TemplatesTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function TemplatesPage() {
   const templates = await prisma.yjTaskTemplate.findMany({
     orderBy: { id: "desc" },

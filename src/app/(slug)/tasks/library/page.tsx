@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/util";
 import { LibraryTable } from "./LibraryTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function LibraryPage() {
   const items = await prisma.yjVerificationLibrary.findMany({
     orderBy: { id: "desc" },

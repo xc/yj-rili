@@ -9,6 +9,9 @@ RUN npm ci
 FROM node:22-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Prisma needs this value while the app is compiled. Database-backed pages are
+# rendered at runtime, so the build does not connect to this placeholder.
+ENV DATABASE_URL="mysql://build:build@127.0.0.1:3306/build"
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

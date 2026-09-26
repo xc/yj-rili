@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { CreateTaskButton } from "./CreateTaskButton";
 import { TasksList } from "./TasksList";
 
+export const dynamic = "force-dynamic";
+
 export default async function TasksPage() {
   const [maintainers, templates, branches] = await Promise.all([
     prisma.yjMaintainer.findMany({

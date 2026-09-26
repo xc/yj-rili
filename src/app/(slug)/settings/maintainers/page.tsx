@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { CreateMaintainerButton } from "@/components/CreateMaintainerButton";
 import { MaintainersTable } from "./MaintainersTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function MaintainersPage() {
   const maintainers = await prisma.yjMaintainer.findMany({
     orderBy: { id: "desc" },

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { CreateBranchButton } from "@/components/CreateBranchButton";
 import { BranchesTable } from "./BranchesTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function BranchesPage() {
   const branches = await prisma.yjBranch.findMany({
     orderBy: { id: "desc" },
