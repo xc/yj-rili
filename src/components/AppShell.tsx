@@ -64,8 +64,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const admin = isAdmin(user?.roles);
   const menuItems = admin
-    ? items
-    : items.filter((item) => item && "key" in item && item.key !== "settings");
+    ? items ?? []
+    : (items ?? []).filter(
+        (item) => item && "key" in item && item.key !== "settings",
+      );
 
   const onLogout = async () => {
     await logout();

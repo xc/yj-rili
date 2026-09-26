@@ -1,7 +1,7 @@
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { getRequestAdmin } from "@/lib/requestAuth";
-import { HQ_BRANCH_ID, isHqRole, Role, roleOptions } from "@/lib/roles";
+import { HQ_BRANCH_ID, isHqRole, roleOptions } from "@/lib/roles";
 import { writeError, writeResponse } from "@/lib/util";
 import { Prisma } from "@prisma/client";
 
@@ -60,8 +60,8 @@ export async function POST(request: Request) {
     return writeError("请选择分公司");
   }
 
-  const role = body.role?.trim() ?? "";
-  if (!roleOptions.includes(role as Role)) {
+  const role = roleOptions.find((option) => option === body.role?.trim());
+  if (!role) {
     return writeError("请选择角色");
   }
 
