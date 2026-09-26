@@ -1,0 +1,43 @@
+name: Build and deploy frontend
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.HOST }}
+      DEPLOY_USER: ${{ vars.USERNAME }}
+      DEPLOY_PACKAGE: ${{ vars.PACKAGE }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build --tag "frontend:${GITHUB_SHA}" .
+
+      - name: Save Docker image archive
+        run: docker save "frontend:${GITHUB_SHA}" | gzip > "frontend-${GITHUB_SHA}.tar.gz"
+
+      - name: Install SSH tools
+        run: sudo apt-get update && sudo apt-get install --yes sshpass
+
+      - name: Upload and extract on server
+        env:
+          DEPLOY_PASSWORD: ${{ secrets.PASSWORD }}
+        run: |
+          test -n "$DEPLOY_HOST" || { echo "Repository variable HOST is required"; exit 1; }
+          test -n "$DEPLOY_USER" || { echo "Repository variable USERNAME is required"; exit 1; }
+          test -n "$DEPLOY_PACKAGE" || { echo "Repository variable PACKAGE is required"; exit 1; }
+          test -n "$DEPLOY_PASSWORD" || { echo "Repository secret PASSWORD is required"; exit 1; }
+
+          export SSHPASS="$DEPLOY_PASSWORD"
+          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p '$DEPLOY_PACKAGE'"
+          sshpass -e scp -o StrictHostKeyChecking=accept-new "frontend-${GITHUB_SHA}.tar.gz" \
+            "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PACKAGE/frontend-${GITHUB_SHA}.tar.gz"
