@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getRequestUser } from "@/lib/requestAuth";
 import { canAccessTask } from "@/lib/taskAccess";
+import { firstVideoPath, publicVideoUrl } from "@/lib/videoUrl";
 import {
   formatDateTime,
   TaskStatus,
@@ -34,6 +35,7 @@ export async function GET(
       branchId: true,
       resultDetail: true,
       logs: true,
+      videos: true,
       template: {
         select: {
           id: true,
@@ -51,6 +53,8 @@ export async function GET(
     return writeError("无权限", 403);
   }
 
+  const videoPath = firstVideoPath(task.videos);
+
   return writeResponse({
     task: {
       id: task.id,
@@ -61,6 +65,7 @@ export async function GET(
       resultDetail: task.resultDetail,
       logs: task.logs,
       template: task.template,
+      videoUrl: videoPath ? publicVideoUrl(videoPath) : null,
     },
   });
 }

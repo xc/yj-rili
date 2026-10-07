@@ -2,16 +2,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { getRequestUser } from "@/lib/requestAuth";
 import { writeError, writeResponse } from "@/lib/util";
-
-function publicVideoUrl(relativePath: string) {
-  const prefix = (process.env.VideoPrefix ?? "http://localhost:3000/video").replace(/\/$/, "");
-  const encoded = relativePath
-    .split(/[/\\]/)
-    .filter(Boolean)
-    .map((part) => encodeURIComponent(part))
-    .join("/");
-  return `${prefix}/${encoded}`;
-}
+import { publicVideoUrl } from "@/lib/videoUrl";
 
 const VIDEO_EXTENSIONS = new Set([
   ".mp4",

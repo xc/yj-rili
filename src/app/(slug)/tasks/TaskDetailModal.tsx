@@ -43,9 +43,8 @@ type TaskDetail = {
   resultDetail: CheckRow[];
   logs: LogRow[];
   template: TaskTemplate;
+  videoUrl: string | null;
 };
-
-const SAMPLE_VIDEO = "/video_subtitle.mp4";
 
 const resultTypeLabel: Record<string, string> = {
   part: "零件",
@@ -253,14 +252,19 @@ export function TaskDetailModal({
     >
       <Spin spinning={loading}>
         <div className="mt-2">
-          <video
-            ref={videoRef}
-            className="mx-auto block bg-black"
-            style={{ width: "100%", maxWidth: 720, height: "auto" }}
-            src={SAMPLE_VIDEO}
-            controls
-            playsInline
-          />
+          {detail?.videoUrl ? (
+            <video
+              ref={videoRef}
+              className="mx-auto block bg-black"
+              style={{ width: "100%", maxWidth: 720, height: "auto" }}
+              src={detail.videoUrl}
+              controls
+              playsInline
+              preload="metadata"
+            />
+          ) : (
+            <div className="py-10 text-center text-neutral-500">暂无视频</div>
+          )}
           <div className="mt-4">
             <Tabs
               size="small"
