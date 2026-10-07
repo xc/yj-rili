@@ -1,3 +1,9 @@
+import {
+  AnalysisType,
+  CheckSystemRequestError,
+  createCheckSystemClient,
+  type AnalysisType as AnalysisTypeName,
+} from "@/lib/checkSystem";
 import { getBearerToken, verifyAuthToken, type AuthTokenPayload } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { getRequestUser } from "@/lib/requestAuth";
@@ -12,6 +18,42 @@ import {
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
+const START_TIME_PATTERN = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/;
+
+type StartVideoInput = {
+  uid: string | null;
+  path: string | null;
+  start_time: string | null;
+  type: AnalysisTypeName;
+};
+
+function readStartVideo(body: {
+  type?: unknown;
+  video?: { uid?: unknown; path?: unknown; start_time?: unknown };
+}): StartVideoInput | string {
+  const type = body.type === undefined ? AnalysisType.Minicpm : body.type;
+  if (type !== AnalysisType.Yolo && type !== AnalysisType.Minicpm) {
+    return "任务类型无效";
+  }
+
+  const video = body.video ?? {};
+  const uid = typeof video.uid === "string" ? video.uid.trim() : "";
+  const path = typeof video.path === "string" ? video.path.trim() : "";
+  const startTime = typeof video.start_time === "string" ? video.start_time.trim() : "";
+  if (!uid && !path) {
+    return "请提供视频 UID 或路径";
+  }
+  if (startTime && !START_TIME_PATTERN.test(startTime)) {
+    return "视频起始时间格式应为 YYYY/MM/DD HH:MM:SS";
+  }
+
+  return {
+    uid: uid || null,
+    path: path || null,
+    start_time: startTime || null,
+    type,
+  };
+}
 
 export async function GET(request: Request) {
   const user = await getRequestUser(request);
@@ -80,13 +122,15 @@ export async function POST(request: Request) {
     return writeError("未登录", 401);
   }
 
-  let body: { name?: string; maintainerId?: number; templateId?: number };
+  let body: {
+    name?: string;
+    maintainerId?: number;
+    templateId?: number;
+    type?: unknown;
+    video?: { uid?: unknown; path?: unknown; start_time?: unknown };
+  };
   try {
-    body = (await request.json()) as {
-      name?: string;
-      maintainerId?: number;
-      templateId?: number;
-    };
+    body = (await request.json()) as typeof body;
   } catch {
     return writeError("请求无效");
   }
@@ -130,10 +174,15 @@ export async function POST(request: Request) {
     return writeError("维保员不存在");
   }
 
+  const video = readStartVideo(body);
+  if (typeof video === "string") {
+    return writeError(video);
+  }
+
   const task = await prisma.yjTask.create({
     data: {
       name,
-      status: TaskStatus.Ongoing,
+      status: TaskStatus.Pending,
       creator: creator.id,
       branchId: creator.branchId,
       templateId: template.id,
@@ -145,11 +194,46 @@ export async function POST(request: Request) {
     },
   });
 
+  const checkSystem = createCheckSystemClient();
+  try {
+    await checkSystem.startTask({
+      id: task.id,
+      type: video.type,
+      video: {
+        id: task.id,
+        uid: video.uid,
+        path: video.path,
+        start_time: video.start_time,
+      },
+    });
+  } catch (error) {
+    await prisma.yjTask.delete({ where: { id: task.id } }).catch(() => undefined);
+    const message =
+      error instanceof CheckSystemRequestError ? error.message : "无法连接检测服务";
+    return writeError(message, error instanceof CheckSystemRequestError && error.status === 0 ? 502 : 400);
+  }
+
+  const started = await prisma.yjTask.update({
+    where: { id: task.id },
+    data: {
+      status: TaskStatus.Ongoing,
+      videos: [
+        {
+          id: task.id,
+          uid: video.uid,
+          path: video.path,
+          start_time: video.start_time,
+          type: video.type,
+        },
+      ],
+    },
+  });
+
   return writeResponse({
     task: {
-      id: task.id,
-      name: task.name,
-      status: task.status,
+      id: started.id,
+      name: started.name,
+      status: started.status,
       creator: task.creator,
       branchId: task.branchId,
       maintainerId: task.maintainerId,
