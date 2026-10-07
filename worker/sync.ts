@@ -12,7 +12,7 @@ import { prisma } from "../src/lib/prisma";
 
 dayjs.extend(customParseFormat);
 
-const INTERVAL_MS = 5_000;
+const INTERVAL_MS = 2 * 60 * 1000;
 const AppTaskStatus = {
   Ongoing: 2,
   Detected: 4,
@@ -199,6 +199,8 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
     return;
   }
 
+  console.log(`[sync] start syncing task ${task.id}`);
+
   let view: TaskView;
   try {
     view = await checkSystem.getTaskStatus(task.id, video.id);
@@ -214,6 +216,13 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
     console.error(`[sync] task ${task.id}:`, error);
     return;
   }
+
+  const progress = view.progress
+    ? ` ${view.progress.stage} (${view.progress.current}/${view.progress.total})`
+    : "";
+  console.log(
+    `[sync] task ${task.id} result status=${view.status} message=${view.message || "-"}${progress}`,
+  );
 
   if (view.status === AnalysisStatus.Queued || view.status === AnalysisStatus.Running) {
     if (sameView(video, view)) {
