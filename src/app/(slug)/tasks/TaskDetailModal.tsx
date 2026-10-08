@@ -5,6 +5,7 @@ import { Button, Input, Modal, Spin, Table, Tabs, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Get, Post } from "@/lib/clientUtil";
+import { getDetectTypeLabel } from "@/lib/detectType";
 
 type CheckRow = {
   id: string;
@@ -39,6 +40,7 @@ type TaskDetail = {
   name: string;
   status: number;
   comment: string;
+  detectType: string;
   createdAt: string;
   resultDetail: CheckRow[];
   logs: LogRow[];
@@ -241,6 +243,9 @@ export function TaskDetailModal({
           </div>
           <div className="mt-1 text-sm font-normal text-black/45">
             创建时间：{detail?.createdAt ?? "—"}
+            <span className="mx-2">·</span>
+            检测类型：
+            {detail ? getDetectTypeLabel(detail.detectType) || "—" : "—"}
           </div>
         </div>
       }

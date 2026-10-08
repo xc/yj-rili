@@ -40,6 +40,7 @@ model YjTask {
   templateId   Int            @map("template_id")
   maintainerId Int            @map("maintainer_id")
   branchId     Int            @map("branch_id")
+  detectType   String         @default("") @map("detect_type") @db.VarChar(32)
   videos       Json           @default("[]")
   comment      String         @db.Text
   resultDetail Json           @default("[]") @map("result_detail")

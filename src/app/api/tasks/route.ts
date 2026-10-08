@@ -1,9 +1,5 @@
-import {
-  AnalysisType,
-  CheckSystemRequestError,
-  createCheckSystemClient,
-  type AnalysisType as AnalysisTypeName,
-} from "@/lib/checkSystem";
+import { CheckSystemRequestError, createCheckSystemClient } from "@/lib/checkSystem";
+import { analysisTypeForDetectType, isDetectType } from "@/lib/detectType";
 import { getBearerToken, verifyAuthToken, type AuthTokenPayload } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { getRequestUser } from "@/lib/requestAuth";
@@ -24,18 +20,11 @@ type StartVideoInput = {
   uid: string | null;
   path: string | null;
   start_time: string | null;
-  type: AnalysisTypeName;
 };
 
 function readStartVideo(body: {
-  type?: unknown;
   video?: { uid?: unknown; path?: unknown; start_time?: unknown };
 }): StartVideoInput | string {
-  const type = body.type === undefined ? AnalysisType.Minicpm : body.type;
-  if (type !== AnalysisType.Yolo && type !== AnalysisType.Minicpm) {
-    return "任务类型无效";
-  }
-
   const video = body.video ?? {};
   const uid = typeof video.uid === "string" ? video.uid.trim() : "";
   const path = typeof video.path === "string" ? video.path.trim() : "";
@@ -51,7 +40,6 @@ function readStartVideo(body: {
     uid: uid || null,
     path: path || null,
     start_time: startTime || null,
-    type,
   };
 }
 
@@ -105,6 +93,7 @@ export async function GET(request: Request) {
       maintainer: task.maintainer.name,
       creator: `${task.creatorUser.firstname} ${task.creatorUser.lastname}`,
       createdAt: formatDateTime(task.createdAt),
+      detectType: task.detectType,
     })),
   });
 }
@@ -126,7 +115,7 @@ export async function POST(request: Request) {
     name?: string;
     maintainerId?: number;
     templateId?: number;
-    type?: unknown;
+    detectType?: unknown;
     video?: { uid?: unknown; path?: unknown; start_time?: unknown };
   };
   try {
@@ -149,6 +138,12 @@ export async function POST(request: Request) {
   if (!Number.isInteger(templateId) || templateId <= 0) {
     return writeError("请选择模板");
   }
+
+  if (!isDetectType(body.detectType)) {
+    return writeError("请选择检测类型");
+  }
+  const detectType = body.detectType;
+  const analysisType = analysisTypeForDetectType(detectType);
 
   const [creator, template, maintainer] = await Promise.all([
     prisma.yjUser.findUnique({
@@ -187,6 +182,7 @@ export async function POST(request: Request) {
       branchId: creator.branchId,
       templateId: template.id,
       maintainerId: maintainer.id,
+      detectType,
       videos: [],
       comment: "",
       resultDetail: [],
@@ -198,7 +194,7 @@ export async function POST(request: Request) {
   try {
     await checkSystem.startTask({
       id: task.id,
-      type: video.type,
+      type: analysisType,
       video: {
         id: task.id,
         uid: video.uid,
@@ -223,7 +219,7 @@ export async function POST(request: Request) {
           uid: video.uid,
           path: video.path,
           start_time: video.start_time,
-          type: video.type,
+          type: analysisType,
         },
       ],
     },
@@ -238,6 +234,7 @@ export async function POST(request: Request) {
       branchId: task.branchId,
       maintainerId: task.maintainerId,
       templateId: task.templateId,
+      detectType: started.detectType,
       createdAt: task.createdAt.toISOString(),
     },
   });

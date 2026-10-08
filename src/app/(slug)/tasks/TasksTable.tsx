@@ -6,6 +6,7 @@ import type { TablePaginationConfig } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Post } from "@/lib/clientUtil";
+import { getDetectTypeLabel } from "@/lib/detectType";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { taskListQuery } from "./taskListQuery";
 
@@ -17,6 +18,7 @@ export type TaskRow = {
   maintainer: string;
   creator: string;
   createdAt: string;
+  detectType: string;
 };
 
 const statusTone: Record<string, { color: string; background: string }> = {
@@ -80,6 +82,13 @@ export function TasksTable({
     { title: "ID", dataIndex: "id", key: "id", width: 80 },
     { title: "名称", dataIndex: "name", key: "name" },
     { title: "模板", dataIndex: "template", key: "template", width: 140 },
+    {
+      title: "检测类型",
+      dataIndex: "detectType",
+      key: "detectType",
+      width: 120,
+      render: (detectType: string) => getDetectTypeLabel(detectType) || "—",
+    },
     { title: "维保员", dataIndex: "maintainer", key: "maintainer", width: 140 },
     { title: "创建人", dataIndex: "creator", key: "creator", width: 140 },
     { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 200 },

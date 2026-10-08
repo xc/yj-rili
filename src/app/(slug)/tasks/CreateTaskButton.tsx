@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CreateMaintainerButton } from "@/components/CreateMaintainerButton";
 import { Get, Post } from "@/lib/clientUtil";
+import { detectTypeOptions, type DetectType } from "@/lib/detectType";
 import { TASKS_CHANGED_EVENT } from "./taskListQuery";
 
 type ServerVideo = {
@@ -31,6 +32,7 @@ export function CreateTaskButton({
     name: string;
     maintainerId: number;
     templateId: number;
+    detectType: DetectType;
     videoPath?: string;
     videoStartTime?: string;
   }>();
@@ -71,6 +73,7 @@ export function CreateTaskButton({
         name: values.name.trim(),
         maintainerId: values.maintainerId,
         templateId: values.templateId,
+        detectType: values.detectType,
         video: {
           path: values.videoPath?.trim() || null,
           start_time: values.videoStartTime?.trim() || null,
@@ -116,6 +119,13 @@ export function CreateTaskButton({
             rules={[{ required: true, message: "请输入名称" }]}
           >
             <Input autoComplete="off" />
+          </Form.Item>
+          <Form.Item
+            name="detectType"
+            label="检测类型"
+            rules={[{ required: true, message: "请选择检测类型" }]}
+          >
+            <Select placeholder="请选择检测类型" options={[...detectTypeOptions]} />
           </Form.Item>
           <Form.Item
             name="templateId"
