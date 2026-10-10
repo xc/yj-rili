@@ -17,6 +17,62 @@ type CheckRow = {
   part_id?: string;
 };
 
+/**
+ * 
+ * 
+ *  id: crypto.randomUUID(),
+      type: "behavior",
+      area: item.区域 ?? "",
+      analystics: item.分析 ?? "",
+      behavior: item.行为 ?? "",
+      _start_time: toClock(item.开始时间, startTime),
+      _end_time: toClock(item.结束时间, startTime),
+ */
+
+type BehaviorRow = {
+  _id: string;
+  _start_time: string;
+  _end_time: string;
+  analystics: string;
+  behavior: string;
+  area: string;
+};
+
+/*
+
+Example:
+{
+      "track_id": 3,
+      "cls": 0,
+      "name": "轿门",
+      "start": 12.333,
+      "end": 18.667,
+      "duration": 6.334,
+      "max_conf": 0.87,
+      "frames": 20,
+      "boxes": [
+        { "time": 12.333, "conf": 0.81, "xyxy": [412.5, 233.0, 560.75, 402.25] },
+        { "time": 12.667, "conf": 0.87, "xyxy": [415.0, 234.5, 562.0, 404.0] }
+      ]
+    }
+*/
+
+type ComponentRow = {
+  _id: string;
+  _start_time: string;
+  _end_time: string;
+  track_id: string;
+  name: string;
+  duration: number;
+  max_conf: number;
+  frames: number;
+  boxes: {
+    time: string;
+    conf: number;
+    xyxy: [number, number, number, number];
+  }[];
+};
+
 type LogRow = {
   key?: number;
   time: string;
@@ -42,7 +98,7 @@ type TaskDetail = {
   comment: string;
   detectType: string;
   createdAt: string;
-  resultDetail: CheckRow[];
+  resultDetail: (BehaviorRow | ComponentRow)[];
   logs: LogRow[];
   template: TaskTemplate;
   videoUrl: string | null;
@@ -79,16 +135,17 @@ function requiredNames(rule: TaskTemplate["rule"] | undefined) {
 }
 
 function isRequiredHit(
-  record: CheckRow,
+  type: "behavior" | "component",
+  record: BehaviorRow | ComponentRow,
   behaviors: string[],
   components: string[],
 ) {
-  const names = record.labels;
+  const name = type === "behavior" ? record.behavior : record.name;
 
   if (record.type === "behavior") {
-    return names.some((name) => behaviors.includes(name));
+    return behaviors.includes(name);
   }
-  return names.some((name) => components.includes(name));
+  return components.includes(name);
 }
 
 function timeToSeconds(value: string) {
@@ -138,7 +195,14 @@ export function TaskDetailModal({
         if (cancelled) {
           return;
         }
-        setDetail(data.task);
+        const resultDetail = data.task.resultDetail.map((item) => ({
+          ...item,
+          _id: crypto.randomUUID(),
+        }));
+        setDetail({
+          ...data.task,
+          resultDetail,
+        });
         setComment(data.task.comment);
       })
       .catch((error) => {
@@ -157,6 +221,7 @@ export function TaskDetailModal({
       cancelled = true;
     };
   }, [open, taskId]);
+  console.log(detail);
 
   const results = Array.isArray(detail?.resultDetail)
     ? detail.resultDetail
@@ -165,20 +230,20 @@ export function TaskDetailModal({
   const canReview = detail?.status === 4;
   const { behaviors: requiredBehaviors, components: requiredComponents } =
     requiredNames(detail?.template?.rule);
-  const missingRequired = [
-    ...requiredBehaviors.filter(
-      (name) =>
-        !results.some(
-          (row) => row.type === "behavior" && row.labels.includes(name),
-        ),
-    ),
-    ...requiredComponents.filter(
-      (name) =>
-        !results.some(
-          (row) => row.type === "part" && row.labels.includes(name),
-        ),
-    ),
-  ];
+  // const missingRequired = [
+  //   ...requiredBehaviors.filter(
+  //     (name) =>
+  //       !results.some(
+  //         (row) => row.type === "behavior" && row.labels.includes(name),
+  //       ),
+  //   ),
+  //   ...requiredComponents.filter(
+  //     (name) =>
+  //       !results.some(
+  //         (row) => row.type === "part" && row.labels.includes(name),
+  //       ),
+  //   ),
+  // ];
 
   const seekTo = (time: string) => {
     const video = videoRef.current;
@@ -282,25 +347,29 @@ export function TaskDetailModal({
                   label: "结果",
                   children: (
                     <>
-                      {missingRequired.length > 0 ? (
-                        <div
-                          className="mb-2 text-sm"
-                          style={{ color: "#cf1322" }}
-                        >
-                          缺失必检：{missingRequired.join("、")}
-                        </div>
-                      ) : null}
+                      {/* <>
+                        {requiredBehaviors.length > 0 ? (
+                          <div className="mb-2 text-sm" style={{ color: "#cf1322" }}>
+                            缺失必检：{requiredBehaviors.join("、")}
+                          </div>
+                        ) : null}
+                        {requiredComponents.length > 0 ? (
+                          <div className="mb-2 text-sm" style={{ color: "#cf1322" }}>
+                            缺失必检：{requiredComponents.join("、")}
+                          </div>
+                        ) : null}
+                      </> */}
                       <Table
                         className="rili-task-table"
                         size="small"
                         pagination={false}
                         dataSource={results}
-                        rowKey="id"
+                        rowKey="_id"
                         columns={[
                           {
                             title: "开始时间",
-                            dataIndex: "start_time",
-                            width: 90,
+                            dataIndex: "_start_time",
+                            width: 50,
                             render: (time: string) => (
                               <button
                                 type="button"
@@ -314,22 +383,29 @@ export function TaskDetailModal({
                           },
                           {
                             title: "结束时间",
-                            dataIndex: "end_time",
+                            dataIndex: "_end_time",
                             width: 90,
                           },
-                          {
-                            title: "类型",
-                            dataIndex: "type",
-                            width: 80,
-                            render: (type: CheckRow["type"]) =>
-                              resultTypeLabel[type] ?? type,
-                          },
-                          {
-                            title: "名称",
-                            key: "name",
-                            render: (_: unknown, record: CheckRow) =>
-                              record.labels.join("、"),
-                          },
+                          ...(detail?.detectType === "action"
+                            ? [
+                                {
+                                  title: "行为",
+                                  dataIndex: "behavior",
+                                  width: 120,
+                                },
+                                {
+                                  title: "分析",
+                                  dataIndex: "analystics",
+                                  width: 120,
+                                },
+                              ]
+                            : [
+                                {
+                                  title: "零件",
+                                  dataIndex: "name",
+                                  width: 120,
+                                },
+                              ]),
                           {
                             title: "匹配?",
                             key: "required",
@@ -337,6 +413,7 @@ export function TaskDetailModal({
                             align: "center" as const,
                             render: (_: unknown, record: CheckRow) =>
                               isRequiredHit(
+                                detail?.detectType,
                                 record,
                                 requiredBehaviors,
                                 requiredComponents,
