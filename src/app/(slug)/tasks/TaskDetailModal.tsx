@@ -7,16 +7,6 @@ import { useEffect, useRef, useState } from "react";
 import { Get, Post } from "@/lib/clientUtil";
 import { getDetectTypeLabel } from "@/lib/detectType";
 
-type CheckRow = {
-  id: string;
-  start_time: string;
-  end_time: string;
-  type: "behavior" | "part";
-  labels: string[];
-  area?: string;
-  part_id?: string;
-};
-
 /**
  * 
  * 
@@ -389,6 +379,11 @@ export function TaskDetailModal({
                           ...(detail?.detectType === "action"
                             ? [
                                 {
+                                  title: "区域",
+                                  dataIndex: "area",
+                                  width: 80,
+                                },
+                                {
                                   title: "行为",
                                   dataIndex: "behavior",
                                   width: 120,
@@ -396,7 +391,7 @@ export function TaskDetailModal({
                                 {
                                   title: "分析",
                                   dataIndex: "analystics",
-                                  width: 120,
+                                  width: 250,
                                 },
                               ]
                             : [
@@ -411,9 +406,14 @@ export function TaskDetailModal({
                             key: "required",
                             width: 72,
                             align: "center" as const,
-                            render: (_: unknown, record: CheckRow) =>
+                            render: (
+                              _: unknown,
+                              record: BehaviorRow | ComponentRow,
+                            ) =>
                               isRequiredHit(
-                                detail?.detectType,
+                                detail?.detectType === "action"
+                                  ? "behavior"
+                                  : "component",
                                 record,
                                 requiredBehaviors,
                                 requiredComponents,
