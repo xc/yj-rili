@@ -48,8 +48,10 @@ function readLogs(value: unknown): LogRow[] {
     if (typeof message !== "string") {
       return [];
     }
-    const key = "key" in item && typeof item.key === "number" ? item.key : index + 1;
-    const time = "time" in item && typeof item.time === "string" ? item.time : "";
+    const key =
+      "key" in item && typeof item.key === "number" ? item.key : index + 1;
+    const time =
+      "time" in item && typeof item.time === "string" ? item.time : "";
     return [{ key, time, message }];
   });
 }
@@ -85,8 +87,10 @@ function readVideo(videos: unknown): StoredVideo | null {
   const progress = record.progress;
   return {
     id,
-    start_time: typeof record.start_time === "string" ? record.start_time : null,
-    checkStatus: typeof record.checkStatus === "number" ? record.checkStatus : undefined,
+    start_time:
+      typeof record.start_time === "string" ? record.start_time : null,
+    checkStatus:
+      typeof record.checkStatus === "number" ? record.checkStatus : undefined,
     settled: record.settled === true,
     message: typeof record.message === "string" ? record.message : undefined,
     progress:
@@ -121,7 +125,11 @@ function toClock(value: string, startTime: string | null) {
     const clock = value.match(/(\d{2}:\d{2}:\d{2})$/);
     return clock?.[1] ?? value;
   }
-  const start = dayjs(startTime, ["YYYY/MM/DD HH:mm:ss", "YYYY-MM-DD HH:mm:ss"], true);
+  const start = dayjs(
+    startTime,
+    ["YYYY/MM/DD HH:mm:ss", "YYYY-MM-DD HH:mm:ss"],
+    true,
+  );
   if (!start.isValid()) {
     return at.format("HH:mm:ss");
   }
@@ -137,20 +145,17 @@ function mapResult(result: AnalysisResult | null, startTime: string | null) {
       id: crypto.randomUUID(),
       type: "behavior",
       area: item.区域 ?? "",
-      labels: [item.分析 ?? "", item.区域 ?? "", item.行为 ?? ""],
-      start_time: toClock(item.开始时间, startTime),
-      end_time: toClock(item.结束时间, startTime),
+      analystics: item.分析 ?? "",
+      behavior: item.行为 ?? "",
+      _start_time: toClock(item.开始时间, startTime),
+      _end_time: toClock(item.结束时间, startTime),
     }));
   }
   if ("yolo" in result && Array.isArray(result.yolo)) {
     return result.yolo.map((item) => ({
-      id: crypto.randomUUID(),
-      type: "part",
-      area: "",
-      labels: [item.name],
-      part_id: String(item.track_id),
-      start_time: formatSeconds(item.start),
-      end_time: formatSeconds(item.end),
+      ...item,
+      _start_time: formatSeconds(item.start),
+      _end_time: formatSeconds(item.end),
     }));
   }
   return [];
@@ -167,7 +172,8 @@ function sameView(video: StoredVideo, view: TaskView) {
   return (
     video.checkStatus === view.status &&
     (video.message ?? "") === view.message &&
-    JSON.stringify(video.progress ?? null) === JSON.stringify(view.progress ?? null)
+    JSON.stringify(video.progress ?? null) ===
+      JSON.stringify(view.progress ?? null)
   );
 }
 
@@ -209,8 +215,16 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
       console.error(`[sync] task ${task.id}: ${error.message}`);
       return;
     }
-    if (error instanceof CheckSystemRequestError && error.message === "任务不存在") {
-      await settle(task, video.id, { status: AnalysisStatus.Terminated, message: error.message }, error.message);
+    if (
+      error instanceof CheckSystemRequestError &&
+      error.message === "任务不存在"
+    ) {
+      await settle(
+        task,
+        video.id,
+        { status: AnalysisStatus.Terminated, message: error.message },
+        error.message,
+      );
       return;
     }
     console.error(`[sync] task ${task.id}:`, error);
@@ -224,7 +238,10 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
     `[sync] task ${task.id} result status=${view.status} message=${view.message || "-"}${progress}`,
   );
 
-  if (view.status === AnalysisStatus.Queued || view.status === AnalysisStatus.Running) {
+  if (
+    view.status === AnalysisStatus.Queued ||
+    view.status === AnalysisStatus.Running
+  ) {
     if (sameView(video, view)) {
       return;
     }
@@ -237,7 +254,10 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
           progress: view.progress ?? null,
           settled: false,
         }) as Prisma.InputJsonValue,
-        logs: appendLog(task.logs, progressMessage(view)) as Prisma.InputJsonValue,
+        logs: appendLog(
+          task.logs,
+          progressMessage(view),
+        ) as Prisma.InputJsonValue,
       },
     });
     return;
@@ -257,7 +277,10 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
           progress: null,
           settled: true,
         }) as Prisma.InputJsonValue,
-        logs: appendLog(task.logs, view.message || "检测完成") as Prisma.InputJsonValue,
+        logs: appendLog(
+          task.logs,
+          view.message || "检测完成",
+        ) as Prisma.InputJsonValue,
       },
     });
     console.log(`[sync] task ${task.id} detected (${rows.length})`);
