@@ -122,31 +122,61 @@ function isRequiredHit(
   behaviors: string[],
   components: string[],
 ) {
-  const name = type === "behavior" ? record.behavior : record.name;
-
-  if (record.type === "behavior") {
-    return behaviors.includes(name);
+  if (type === "behavior") {
+    return isComponentRow(record) ? false : behaviors.includes(record.behavior);
   }
-  return components.includes(name);
+  return isComponentRow(record) ? components.includes(record.name) : false;
 }
 
-function isComponentRow(
-  row: BehaviorRow | ComponentRow,
-): row is ComponentRow {
+function isComponentRow(row: BehaviorRow | ComponentRow): row is ComponentRow {
   return Array.isArray((row as ComponentRow).boxes);
+}
+
+function isBehaviorRow(row: BehaviorRow | ComponentRow): row is BehaviorRow {
+  return !isComponentRow(row);
+}
+
+function captionsAt(rows: BehaviorRow[], time: number) {
+  return rows.filter((row) => {
+    if (!row.behavior) {
+      return false;
+    }
+    const start = timeToSeconds(row._start_time);
+    const end = timeToSeconds(row._end_time);
+    return time >= start && time <= end;
+  });
+}
+
+function nameCounts(rows: ComponentRow[]) {
+  const groups = new Map<string, { name: string; count: number }>();
+  for (const row of rows) {
+    const name = row.name || "—";
+    const current = groups.get(name);
+    if (current) {
+      current.count += 1;
+    } else {
+      groups.set(name, { name, count: 1 });
+    }
+  }
+  return [...groups.values()].sort((left, right) =>
+    left.name.localeCompare(right.name, "zh"),
+  );
 }
 
 function DetectionVideo({
   src,
   tracks,
+  behaviors,
   videoRef,
 }: {
   src: string;
   tracks: ComponentRow[];
+  behaviors: BehaviorRow[];
   videoRef: RefObject<HTMLVideoElement | null>;
 }) {
   const [frame, setFrame] = useState<FrameSize | null>(null);
   const [time, setTime] = useState(0);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -186,11 +216,13 @@ function DetectionVideo({
     };
 
     const onPlay = () => {
+      setPlaying(true);
       cancelAnimationFrame(frameId);
       frameId = requestAnimationFrame(loop);
     };
 
     const onStop = () => {
+      setPlaying(false);
       cancelAnimationFrame(frameId);
       readTime();
     };
@@ -229,60 +261,72 @@ function DetectionVideo({
 
   const boxes = frame ? visibleBoxes(tracks, time) : [];
   const dots = frame ? traceDots(tracks, time) : [];
+  const caption = playing
+    ? captionsAt(behaviors, time)
+        .map((row) => row.behavior)
+        .join(" · ")
+    : "";
+  console.log(playing);
 
   return (
-    <div
-      className="relative mx-auto w-full bg-black"
-      style={{
-        maxWidth: 720,
-        aspectRatio: frame ? `${frame.width} / ${frame.height}` : undefined,
-      }}
-    >
-      <video
-        ref={videoRef}
-        className={
-          frame
-            ? "absolute inset-0 h-full w-full bg-black object-fill"
-            : "block w-full bg-black"
-        }
-        style={frame ? undefined : { height: "auto" }}
-        src={src}
-        controls
-        playsInline
-        preload="metadata"
-      />
-      {frame ? (
-        <div className="pointer-events-none absolute inset-0">
-          {dots.map((dot) => (
-            <span
-              key={dot.id}
-              className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#03fcfc]"
-              style={{
-                left: `${(dot.x / frame.width) * 100}%`,
-                top: `${(dot.y / frame.height) * 100}%`,
-              }}
-            />
-          ))}
-          {boxes.map((box) => {
-            const place = boxPercents(box, frame);
-            return (
-              <div
-                key={box.id}
-                title={box.name}
-                className="pointer-events-auto absolute box-border"
+    <div className="mx-auto w-full" style={{ maxWidth: 720 }}>
+      <div
+        className="relative w-full bg-black"
+        style={{
+          aspectRatio: frame ? `${frame.width} / ${frame.height}` : undefined,
+        }}
+      >
+        {behaviors.length > 0 ? (
+          <div className="text-sm leading-6 text-white p-2 text-center bg-black/50 absolute z-10 top-0 right-0">
+            {caption}
+          </div>
+        ) : null}
+        <video
+          ref={videoRef}
+          className={
+            frame
+              ? "absolute inset-0 h-full w-full bg-black object-fill"
+              : "block w-full bg-black"
+          }
+          style={frame ? undefined : { height: "auto" }}
+          src={src}
+          controls
+          playsInline
+          preload="metadata"
+        />
+        {frame ? (
+          <div className="pointer-events-none absolute inset-0">
+            {dots.map((dot) => (
+              <span
+                key={dot.id}
+                className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#03fcfc]"
                 style={{
-                  left: `${place.left}%`,
-                  top: `${place.top}%`,
-                  width: `${place.width}%`,
-                  height: `${place.height}%`,
-                  border: "2px solid #03fcfc",
-                  backgroundColor: "#03fcfc2e",
+                  left: `${(dot.x / frame.width) * 100}%`,
+                  top: `${(dot.y / frame.height) * 100}%`,
                 }}
               />
-            );
-          })}
-        </div>
-      ) : null}
+            ))}
+            {boxes.map((box) => {
+              const place = boxPercents(box, frame);
+              return (
+                <div
+                  key={box.id}
+                  title={box.name}
+                  className="pointer-events-auto absolute box-border"
+                  style={{
+                    left: `${place.left}%`,
+                    top: `${place.top}%`,
+                    width: `${place.width}%`,
+                    height: `${place.height}%`,
+                    border: "2px solid #03fcfc",
+                    backgroundColor: "#03fcfc2e",
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -356,6 +400,8 @@ export function TaskDetailModal({
     requiredNames(detail?.template?.rule);
   const componentTracks =
     detail?.detectType === "component" ? results.filter(isComponentRow) : [];
+  const behaviorRows =
+    detail?.detectType === "action" ? results.filter(isBehaviorRow) : [];
   // const missingRequired = [
   //   ...requiredBehaviors.filter(
   //     (name) =>
@@ -452,6 +498,7 @@ export function TaskDetailModal({
             <DetectionVideo
               src={detail.videoUrl}
               tracks={componentTracks}
+              behaviors={behaviorRows}
               videoRef={videoRef}
             />
           ) : (
@@ -481,6 +528,23 @@ export function TaskDetailModal({
                           </div>
                         ) : null}
                       </> */}
+                      {detail?.detectType === "component" &&
+                      componentTracks.length > 0 ? (
+                        <div className="mb-2 flex flex-wrap gap-2 text-sm">
+                          {nameCounts(componentTracks).map((item) => (
+                            <span
+                              key={item.name}
+                              className="rounded px-2 py-0.5"
+                              style={{
+                                color: "#08979c",
+                                background: "#e6fffb",
+                              }}
+                            >
+                              {item.name} × {item.count}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                       <Table
                         className="rili-task-table"
                         size="small"

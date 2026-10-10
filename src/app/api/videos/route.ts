@@ -22,7 +22,11 @@ export async function GET(request: Request) {
     return writeError("未登录", 401);
   }
 
-  const videoDir = path.resolve(process.cwd(), process.env.VideoDir ?? "public/video");
+  const configured = process.env.VideoDir;
+  if (!configured) {
+    return writeError("未配置 VideoDir", 500);
+  }
+  const videoDir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), configured);
   let entries;
   try {
     entries = await readdir(videoDir, { withFileTypes: true });
@@ -37,7 +41,7 @@ export async function GET(request: Request) {
     .filter((entry) => entry.isFile())
     .filter((entry) => VIDEO_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
     .flatMap((entry) => {
-      const filePath = path.resolve(videoDir, entry.name);
+      const filePath = path.resolve(/*turbopackIgnore: true*/ videoDir, entry.name);
       if (!filePath.startsWith(`${videoDir}${path.sep}`)) {
         return [];
       }
