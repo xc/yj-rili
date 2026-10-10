@@ -3,9 +3,16 @@
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { Button, Input, Modal, Spin, Table, Tabs, message } from "antd";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Get, Post } from "@/lib/clientUtil";
 import { getDetectTypeLabel } from "@/lib/detectType";
+import {
+  boxPercents,
+  timeToSeconds,
+  visibleBoxes,
+  type ComponentRow,
+  type FrameSize,
+} from "./detectionBoxes";
 
 /**
  * 
@@ -46,22 +53,6 @@ Example:
       ]
     }
 */
-
-type ComponentRow = {
-  _id: string;
-  _start_time: string;
-  _end_time: string;
-  track_id: string;
-  name: string;
-  duration: number;
-  max_conf: number;
-  frames: number;
-  boxes: {
-    time: string;
-    conf: number;
-    xyxy: [number, number, number, number];
-  }[];
-};
 
 type LogRow = {
   key?: number;
@@ -138,18 +129,150 @@ function isRequiredHit(
   return components.includes(name);
 }
 
-function timeToSeconds(value: string) {
-  const parts = value.split(":").map(Number);
-  if (parts.some((part) => Number.isNaN(part))) {
-    return 0;
-  }
-  if (parts.length === 3) {
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-  if (parts.length === 2) {
-    return parts[0] * 60 + parts[1];
-  }
-  return parts[0] ?? 0;
+function isComponentRow(
+  row: BehaviorRow | ComponentRow,
+): row is ComponentRow {
+  return Array.isArray((row as ComponentRow).boxes);
+}
+
+function DetectionVideo({
+  src,
+  tracks,
+  videoRef,
+}: {
+  src: string;
+  tracks: ComponentRow[];
+  videoRef: RefObject<HTMLVideoElement | null>;
+}) {
+  const [frame, setFrame] = useState<FrameSize | null>(null);
+  const [time, setTime] = useState(0);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    let frameId = 0;
+    let stopped = false;
+
+    const readFrame = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setFrame((current) => {
+          if (
+            current?.width === video.videoWidth &&
+            current.height === video.videoHeight
+          ) {
+            return current;
+          }
+          return { width: video.videoWidth, height: video.videoHeight };
+        });
+        return;
+      }
+      setFrame(null);
+    };
+
+    const readTime = () => {
+      setTime(video.currentTime);
+    };
+
+    const loop = () => {
+      if (stopped) {
+        return;
+      }
+      readTime();
+      frameId = requestAnimationFrame(loop);
+    };
+
+    const onPlay = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(loop);
+    };
+
+    const onStop = () => {
+      cancelAnimationFrame(frameId);
+      readTime();
+    };
+
+    const onMeta = () => {
+      readFrame();
+      readTime();
+    };
+
+    video.addEventListener("loadedmetadata", onMeta);
+    video.addEventListener("durationchange", onMeta);
+    video.addEventListener("timeupdate", readTime);
+    video.addEventListener("seeking", readTime);
+    video.addEventListener("seeked", readTime);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onStop);
+    video.addEventListener("ended", onStop);
+    onMeta();
+    if (!video.paused && !video.ended) {
+      onPlay();
+    }
+
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(frameId);
+      video.removeEventListener("loadedmetadata", onMeta);
+      video.removeEventListener("durationchange", onMeta);
+      video.removeEventListener("timeupdate", readTime);
+      video.removeEventListener("seeking", readTime);
+      video.removeEventListener("seeked", readTime);
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onStop);
+      video.removeEventListener("ended", onStop);
+    };
+  }, [src, videoRef]);
+
+  const boxes = frame ? visibleBoxes(tracks, time) : [];
+
+  return (
+    <div
+      className="relative mx-auto w-full bg-black"
+      style={{
+        maxWidth: 720,
+        aspectRatio: frame ? `${frame.width} / ${frame.height}` : undefined,
+      }}
+    >
+      <video
+        ref={videoRef}
+        className={
+          frame
+            ? "absolute inset-0 h-full w-full bg-black object-fill"
+            : "block w-full bg-black"
+        }
+        style={frame ? undefined : { height: "auto" }}
+        src={src}
+        controls
+        playsInline
+        preload="metadata"
+      />
+      {frame ? (
+        <div className="pointer-events-none absolute inset-0">
+          {boxes.map((box) => {
+            const place = boxPercents(box, frame);
+            return (
+              <div
+                key={box.id}
+                title={box.name}
+                className="pointer-events-auto absolute box-border"
+                style={{
+                  left: `${place.left}%`,
+                  top: `${place.top}%`,
+                  width: `${place.width}%`,
+                  height: `${place.height}%`,
+                  border: "2px solid #03fcfc",
+                  backgroundColor: "#03fcfc2e",
+                }}
+              />
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function TaskDetailModal({
@@ -211,7 +334,6 @@ export function TaskDetailModal({
       cancelled = true;
     };
   }, [open, taskId]);
-  console.log(detail);
 
   const results = Array.isArray(detail?.resultDetail)
     ? detail.resultDetail
@@ -220,6 +342,8 @@ export function TaskDetailModal({
   const canReview = detail?.status === 4;
   const { behaviors: requiredBehaviors, components: requiredComponents } =
     requiredNames(detail?.template?.rule);
+  const componentTracks =
+    detail?.detectType === "component" ? results.filter(isComponentRow) : [];
   // const missingRequired = [
   //   ...requiredBehaviors.filter(
   //     (name) =>
@@ -313,14 +437,10 @@ export function TaskDetailModal({
       <Spin spinning={loading}>
         <div className="mt-2">
           {detail?.videoUrl ? (
-            <video
-              ref={videoRef}
-              className="mx-auto block bg-black"
-              style={{ width: "100%", maxWidth: 720, height: "auto" }}
+            <DetectionVideo
               src={detail.videoUrl}
-              controls
-              playsInline
-              preload="metadata"
+              tracks={componentTracks}
+              videoRef={videoRef}
             />
           ) : (
             <div className="py-10 text-center text-neutral-500">暂无视频</div>
