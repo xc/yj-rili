@@ -1,17 +1,17 @@
 export const DetectType = {
   Component: "component",
-  Action: "action",
+  Behavior: "behavior",
 } as const;
 
 export type DetectType = (typeof DetectType)[keyof typeof DetectType];
 
 export const detectTypeOptions = [
   { value: DetectType.Component, label: "零件" },
-  { value: DetectType.Action, label: "行为" },
+  { value: DetectType.Behavior, label: "行为" },
 ] as const;
 
 export function isDetectType(value: unknown): value is DetectType {
-  return value === DetectType.Component || value === DetectType.Action;
+  return value === DetectType.Component || value === DetectType.Behavior;
 }
 
 /** Analysis `type` sent to the check system when a task starts. */

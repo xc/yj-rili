@@ -401,7 +401,7 @@ export function TaskDetailModal({
   const componentTracks =
     detail?.detectType === "component" ? results.filter(isComponentRow) : [];
   const behaviorRows =
-    detail?.detectType === "action" ? results.filter(isBehaviorRow) : [];
+    detail?.detectType === "behavior" ? results.filter(isBehaviorRow) : [];
   // const missingRequired = [
   //   ...requiredBehaviors.filter(
   //     (name) =>
@@ -572,7 +572,7 @@ export function TaskDetailModal({
                             dataIndex: "_end_time",
                             width: 90,
                           },
-                          ...(detail?.detectType === "action"
+                          ...(detail?.detectType === "behavior"
                             ? [
                                 {
                                   title: "区域",
@@ -607,7 +607,7 @@ export function TaskDetailModal({
                               record: BehaviorRow | ComponentRow,
                             ) =>
                               isRequiredHit(
-                                detail?.detectType === "action"
+                                detail?.detectType === "behavior"
                                   ? "behavior"
                                   : "component",
                                 record,
