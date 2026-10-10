@@ -33,6 +33,17 @@ export type VisibleBox = {
   height: number;
 };
 
+export type TraceDot = {
+  id: string;
+  x: number;
+  y: number;
+};
+
+type Sample = {
+  at: number;
+  xyxy: [number, number, number, number];
+};
+
 export function timeToSeconds(value: string) {
   const parts = value.split(":").map(Number);
   if (parts.some((part) => Number.isNaN(part))) {
@@ -79,6 +90,23 @@ function intervalEnd(row: ComponentRow) {
   return timeToSeconds(row._end_time);
 }
 
+function trackSamples(row: ComponentRow): Sample[] {
+  return (row.boxes ?? [])
+    .map((box) => ({ at: sampleTime(box.time), xyxy: readXyxy(box.xyxy) }))
+    .filter(
+      (sample): sample is Sample =>
+        Number.isFinite(sample.at) && sample.xyxy !== null,
+    )
+    .sort((left, right) => left.at - right.at);
+}
+
+function trackIsVisible(row: ComponentRow, samples: Sample[], time: number) {
+  if (samples.length === 0) {
+    return false;
+  }
+  return time >= samples[0].at && time <= intervalEnd(row);
+}
+
 /**
  * Each sample is held until the next sample. The last sample stays visible
  * until the parent interval `end`. Nothing is drawn before the first sample.
@@ -86,27 +114,8 @@ function intervalEnd(row: ComponentRow) {
 export function visibleBoxes(rows: ComponentRow[], time: number): VisibleBox[] {
   const visible: VisibleBox[] = [];
   for (const row of rows) {
-    const samples = (row.boxes ?? [])
-      .map((box) => ({
-        box,
-        at: sampleTime(box.time),
-        xyxy: readXyxy(box.xyxy),
-      }))
-      .filter(
-        (
-          sample,
-        ): sample is {
-          box: BoxSample;
-          at: number;
-          xyxy: [number, number, number, number];
-        } => Number.isFinite(sample.at) && sample.xyxy !== null,
-      )
-      .sort((left, right) => left.at - right.at);
-    if (samples.length === 0) {
-      continue;
-    }
-    const end = intervalEnd(row);
-    if (time < samples[0].at || time > end) {
+    const samples = trackSamples(row);
+    if (!trackIsVisible(row, samples, time)) {
       continue;
     }
     let chosen = samples[0];
@@ -133,6 +142,30 @@ export function visibleBoxes(rows: ComponentRow[], time: number): VisibleBox[] {
     });
   }
   return visible;
+}
+
+/** Centers from the first sample through the sample at `time`. */
+export function traceDots(rows: ComponentRow[], time: number): TraceDot[] {
+  const dots: TraceDot[] = [];
+  for (const row of rows) {
+    const samples = trackSamples(row);
+    if (!trackIsVisible(row, samples, time)) {
+      continue;
+    }
+    for (let index = 0; index < samples.length; index += 1) {
+      const sample = samples[index];
+      if (sample.at > time) {
+        break;
+      }
+      const [x1, y1, x2, y2] = sample.xyxy;
+      dots.push({
+        id: `${row._id}-${index}`,
+        x: (x1 + x2) / 2,
+        y: (y1 + y2) / 2,
+      });
+    }
+  }
+  return dots;
 }
 
 export function boxPercents(box: VisibleBox, frame: FrameSize) {

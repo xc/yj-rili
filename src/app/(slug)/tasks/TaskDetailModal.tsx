@@ -9,6 +9,7 @@ import { getDetectTypeLabel } from "@/lib/detectType";
 import {
   boxPercents,
   timeToSeconds,
+  traceDots,
   visibleBoxes,
   type ComponentRow,
   type FrameSize,
@@ -227,6 +228,7 @@ function DetectionVideo({
   }, [src, videoRef]);
 
   const boxes = frame ? visibleBoxes(tracks, time) : [];
+  const dots = frame ? traceDots(tracks, time) : [];
 
   return (
     <div
@@ -251,6 +253,16 @@ function DetectionVideo({
       />
       {frame ? (
         <div className="pointer-events-none absolute inset-0">
+          {dots.map((dot) => (
+            <span
+              key={dot.id}
+              className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#03fcfc]"
+              style={{
+                left: `${(dot.x / frame.width) * 100}%`,
+                top: `${(dot.y / frame.height) * 100}%`,
+              }}
+            />
+          ))}
           {boxes.map((box) => {
             const place = boxPercents(box, frame);
             return (
