@@ -42,6 +42,24 @@ export function getTaskStatusLabel(status: number | string) {
   return taskStatus[key] ?? String(status);
 }
 
+export function formatTaskProgress(
+  status: number | string,
+  progress: string | null | undefined,
+) {
+  const ongoing =
+    status === TaskStatus.Ongoing ||
+    status === getTaskStatusLabel(TaskStatus.Ongoing) ||
+    String(status) === String(TaskStatus.Ongoing);
+  if (!ongoing) {
+    return "-";
+  }
+  const [current, total] = (progress ?? "").split("/");
+  if (!current || !total) {
+    return "-";
+  }
+  return `${current}/${total}`;
+}
+
 export function formatDateTime(date: Date) {
   return dayjs(date).format("YYYY-MM-DD HH:mm");
 }

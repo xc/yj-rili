@@ -6,6 +6,7 @@ import { getRequestUser } from "@/lib/requestAuth";
 import { tasksWhereForUser } from "@/lib/taskAccess";
 import {
   formatDateTime,
+  formatTaskProgress,
   getTaskStatusLabel,
   TaskStatus,
   writeError,
@@ -94,6 +95,7 @@ export async function GET(request: Request) {
       creator: `${task.creatorUser.firstname} ${task.creatorUser.lastname}`,
       createdAt: formatDateTime(task.createdAt),
       detectType: task.detectType,
+      progress: formatTaskProgress(task.status, task.progress),
     })),
   });
 }

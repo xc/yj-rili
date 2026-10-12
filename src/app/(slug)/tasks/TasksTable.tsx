@@ -19,6 +19,7 @@ export type TaskRow = {
   creator: string;
   createdAt: string;
   detectType: string;
+  progress: string;
 };
 
 const statusTone: Record<string, { color: string; background: string }> = {
@@ -80,7 +81,7 @@ export function TasksTable({
 
   const columns = [
     { title: "ID", dataIndex: "id", key: "id", width: 80 },
-    { title: "名称", dataIndex: "name", key: "name" },
+    { title: "名称", dataIndex: "name", key: "name", width: 240 },
     { title: "模板", dataIndex: "template", key: "template", width: 140 },
     {
       title: "检测类型",
@@ -92,6 +93,13 @@ export function TasksTable({
     { title: "维保员", dataIndex: "maintainer", key: "maintainer", width: 140 },
     { title: "创建人", dataIndex: "creator", key: "creator", width: 140 },
     { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 200 },
+    {
+      title: "进度",
+      dataIndex: "progress",
+      key: "progress",
+      width: 64,
+      render: (progress: string) => progress || "-",
+    },
     {
       title: "状态",
       dataIndex: "status",

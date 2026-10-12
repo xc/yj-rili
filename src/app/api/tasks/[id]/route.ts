@@ -4,6 +4,7 @@ import { canAccessTask } from "@/lib/taskAccess";
 import { firstVideoPath, publicVideoUrl } from "@/lib/videoUrl";
 import {
   formatDateTime,
+  formatTaskProgress,
   TaskStatus,
   writeError,
   writeResponse,
@@ -37,6 +38,7 @@ export async function GET(
       resultDetail: true,
       logs: true,
       videos: true,
+      progress: true,
       template: {
         select: {
           id: true,
@@ -66,6 +68,7 @@ export async function GET(
       createdAt: formatDateTime(task.createdAt),
       resultDetail: task.resultDetail,
       logs: task.logs,
+      progress: formatTaskProgress(task.status, task.progress),
       template: task.template,
       videoUrl: videoPath ? publicVideoUrl(videoPath) : null,
     },

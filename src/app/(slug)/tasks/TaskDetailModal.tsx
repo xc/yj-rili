@@ -15,6 +15,17 @@ import {
   type FrameSize,
 } from "./detectionBoxes";
 
+function randomId() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 /**
  * 
  * 
@@ -84,6 +95,7 @@ type TaskDetail = {
   logs: LogRow[];
   template: TaskTemplate;
   videoUrl: string | null;
+  progress: string;
 };
 
 const resultTypeLabel: Record<string, string> = {
@@ -148,19 +160,28 @@ function captionsAt(rows: BehaviorRow[], time: number) {
 }
 
 function nameCounts(rows: ComponentRow[]) {
-  const groups = new Map<string, { name: string; count: number }>();
+  const groups = new Map<
+    string,
+    { name: string; trackId: string; count: number }
+  >();
   for (const row of rows) {
     const name = row.name || "—";
-    const current = groups.get(name);
+    const trackId = row.track_id == null ? "" : String(row.track_id);
+    const key = `${trackId}\0${name}`;
+    const current = groups.get(key);
     if (current) {
       current.count += 1;
     } else {
-      groups.set(name, { name, count: 1 });
+      groups.set(key, { name, trackId, count: 1 });
     }
   }
-  return [...groups.values()].sort((left, right) =>
-    left.name.localeCompare(right.name, "zh"),
-  );
+  return [...groups.values()].sort((left, right) => {
+    const byName = left.name.localeCompare(right.name, "zh");
+    if (byName !== 0) {
+      return byName;
+    }
+    return left.trackId.localeCompare(right.trackId, "zh", { numeric: true });
+  });
 }
 
 function DetectionVideo({
@@ -366,7 +387,7 @@ export function TaskDetailModal({
         }
         const resultDetail = data.task.resultDetail.map((item) => ({
           ...item,
-          _id: crypto.randomUUID(),
+          _id: randomId(),
         }));
         setDetail({
           ...data.task,
@@ -483,6 +504,8 @@ export function TaskDetailModal({
             <span className="mx-2">·</span>
             检测类型：
             {detail ? getDetectTypeLabel(detail.detectType) || "—" : "—"}
+            <span className="mx-2">·</span>
+            进度：{detail?.progress || "-"}
           </div>
         </div>
       }
@@ -533,14 +556,16 @@ export function TaskDetailModal({
                         <div className="mb-2 flex flex-wrap gap-2 text-sm">
                           {nameCounts(componentTracks).map((item) => (
                             <span
-                              key={item.name}
+                              key={`${item.trackId}:${item.name}`}
                               className="rounded px-2 py-0.5"
                               style={{
                                 color: "#08979c",
                                 background: "#e6fffb",
                               }}
                             >
-                              {item.name} × {item.count}
+                              {item.name}
+                              {item.trackId ? ` ${item.trackId}` : ""} ×{" "}
+                              {item.count}
                             </span>
                           ))}
                         </div>

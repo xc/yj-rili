@@ -45,6 +45,7 @@ model YjTask {
   comment      String         @db.Text
   resultDetail Json           @default("[]") @map("result_detail")
   logs         Json           @default("[]")
+  progress     String         @default("") @db.VarChar(32)
   creatorUser  YjUser         @relation(fields: [creator], references: [id])
   template     YjTaskTemplate @relation(fields: [templateId], references: [id])
   maintainer   YjMaintainer   @relation(fields: [maintainerId], references: [id])

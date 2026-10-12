@@ -1,9 +1,11 @@
 "use client";
 
-import { LockOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Modal, Table, message } from "antd";
+import { DeleteOutlined, LockOutlined } from "@ant-design/icons";
+import { Button, Form, Input, Modal, Space, Table, message } from "antd";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Post } from "@/lib/clientUtil";
+import { useAuth } from "@/lib/auth";
 
 type UserRow = {
   id: number;
@@ -15,6 +17,8 @@ type UserRow = {
 };
 
 export function UsersTable({ users }: { users: UserRow[] }) {
+  const router = useRouter();
+  const { user } = useAuth();
   const [target, setTarget] = useState<UserRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<{ password: string }>();
@@ -44,6 +48,25 @@ export function UsersTable({ users }: { users: UserRow[] }) {
     }
   };
 
+  const onDelete = (record: UserRow) => {
+    Modal.confirm({
+      title: "确认删除",
+      content: `确定删除用户「${record.username}」吗？`,
+      okText: "删除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          await Post("/api/users/delete", { id: record.id });
+          message.success("已删除");
+          router.refresh();
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : "删除失败");
+        }
+      },
+    });
+  };
+
   return (
     <>
       <Table
@@ -58,18 +81,30 @@ export function UsersTable({ users }: { users: UserRow[] }) {
           {
             title: "操作",
             key: "actions",
-            width: 140,
+            width: 220,
             render: (_: unknown, record: UserRow) => (
-              <Button
-                size="small"
-                icon={<LockOutlined />}
-                onClick={() => {
-                  form.resetFields();
-                  setTarget(record);
-                }}
-              >
-                修改密码
-              </Button>
+              <Space size="small">
+                <Button
+                  size="small"
+                  icon={<LockOutlined />}
+                  onClick={() => {
+                    form.resetFields();
+                    setTarget(record);
+                  }}
+                >
+                  修改密码
+                </Button>
+                {record.id === user?.id ? null : (
+                  <Button
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => onDelete(record)}
+                  >
+                    删除
+                  </Button>
+                )}
+              </Space>
             ),
           },
         ]}

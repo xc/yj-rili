@@ -141,14 +141,19 @@ function mapResult(result: AnalysisResult | null, startTime: string | null) {
     return [];
   }
   if ("GPT" in result && Array.isArray(result.GPT)) {
+    const origin = startTime?.trim()
+      ? startTime
+      : (result.GPT[0]?.开始时间 ?? null);
     return result.GPT.map((item) => ({
       id: crypto.randomUUID(),
       type: "behavior",
       area: item.区域 ?? "",
       analystics: item.分析 ?? "",
       behavior: item.行为 ?? "",
-      _start_time: toClock(item.开始时间, startTime),
-      _end_time: toClock(item.结束时间, startTime),
+      start_time: item.开始时间,
+      end_time: item.结束时间,
+      _start_time: toClock(item.开始时间, origin),
+      _end_time: toClock(item.结束时间, origin),
     }));
   }
   if ("yolo" in result && Array.isArray(result.yolo)) {
@@ -168,12 +173,20 @@ function progressMessage(view: TaskView) {
   return `${view.progress.stage} (${view.progress.current}/${view.progress.total})`;
 }
 
-function sameView(video: StoredVideo, view: TaskView) {
+function formatProgress(progress: TaskView["progress"] | null | undefined) {
+  if (!progress) {
+    return "";
+  }
+  return `${progress.current}/${progress.total}`;
+}
+
+function sameView(video: StoredVideo, view: TaskView, progress: string) {
   return (
     video.checkStatus === view.status &&
     (video.message ?? "") === view.message &&
     JSON.stringify(video.progress ?? null) ===
-      JSON.stringify(view.progress ?? null)
+      JSON.stringify(view.progress ?? null) &&
+    progress === formatProgress(view.progress)
   );
 }
 
@@ -186,6 +199,7 @@ async function settle(
   await prisma.yjTask.update({
     where: { id: task.id },
     data: {
+      progress: "",
       videos: patchVideos(task.videos, {
         id: videoId,
         checkStatus: view.status,
@@ -199,7 +213,12 @@ async function settle(
   console.log(`[sync] task ${task.id} stopped: ${message}`);
 }
 
-async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
+async function syncTask(task: {
+  id: number;
+  videos: unknown;
+  logs: unknown;
+  progress: string;
+}) {
   const video = readVideo(task.videos);
   if (!video || video.settled) {
     return;
@@ -242,12 +261,13 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
     view.status === AnalysisStatus.Queued ||
     view.status === AnalysisStatus.Running
   ) {
-    if (sameView(video, view)) {
+    if (sameView(video, view, task.progress)) {
       return;
     }
     await prisma.yjTask.update({
       where: { id: task.id },
       data: {
+        progress: formatProgress(view.progress),
         videos: patchVideos(task.videos, {
           checkStatus: view.status,
           message: view.message,
@@ -270,6 +290,7 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
       where: { id: task.id },
       data: {
         status: AppTaskStatus.Detected,
+        progress: "",
         resultDetail: rows as Prisma.InputJsonValue,
         videos: patchVideos(task.videos, {
           checkStatus: view.status,
@@ -293,7 +314,7 @@ async function syncTask(task: { id: number; videos: unknown; logs: unknown }) {
 async function syncOnce() {
   const tasks = await prisma.yjTask.findMany({
     where: { status: AppTaskStatus.Ongoing },
-    select: { id: true, videos: true, logs: true },
+    select: { id: true, videos: true, logs: true, progress: true },
   });
   for (const task of tasks) {
     try {
