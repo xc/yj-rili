@@ -27,6 +27,8 @@ export type FrameSize = {
 export type VisibleBox = {
   id: string;
   name: string;
+  trackId: string | number;
+  conf: number;
   x: number;
   y: number;
   width: number;
@@ -41,6 +43,7 @@ export type TraceDot = {
 
 type Sample = {
   at: number;
+  conf: number;
   xyxy: [number, number, number, number];
 };
 
@@ -92,7 +95,11 @@ function intervalEnd(row: ComponentRow) {
 
 function trackSamples(row: ComponentRow): Sample[] {
   return (row.boxes ?? [])
-    .map((box) => ({ at: sampleTime(box.time), xyxy: readXyxy(box.xyxy) }))
+    .map((box) => ({
+      at: sampleTime(box.time),
+      conf: box.conf,
+      xyxy: readXyxy(box.xyxy),
+    }))
     .filter(
       (sample): sample is Sample =>
         Number.isFinite(sample.at) && sample.xyxy !== null,
@@ -135,6 +142,8 @@ export function visibleBoxes(rows: ComponentRow[], time: number): VisibleBox[] {
     visible.push({
       id: row._id,
       name: row.name,
+      trackId: row.track_id,
+      conf: chosen.conf,
       x: Math.min(x1, x2),
       y: Math.min(y1, y2),
       width,

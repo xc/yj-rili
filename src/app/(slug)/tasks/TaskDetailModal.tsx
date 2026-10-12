@@ -300,6 +300,16 @@ function DetectionVideo({
             {caption}
           </div>
         ) : null}
+        {boxes.length > 0 ? (
+          <div className="absolute top-0 right-0 z-10 bg-black/50 p-2 text-center text-sm leading-6 text-white">
+            {boxes.map((box) => (
+              <div key={box.id}>
+                {box.trackId} {box.name}
+                {Number.isFinite(box.conf) ? ` ${box.conf.toFixed(2)}` : ""}
+              </div>
+            ))}
+          </div>
+        ) : null}
         <video
           ref={videoRef}
           className={
