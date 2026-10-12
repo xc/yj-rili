@@ -16,6 +16,8 @@ const INTERVAL_MS = 2 * 60 * 1000;
 const AppTaskStatus = {
   Ongoing: 2,
   Detected: 4,
+  Failed: 5,
+  Terminated: 6,
 } as const;
 
 type LogRow = {
@@ -199,6 +201,10 @@ async function settle(
   await prisma.yjTask.update({
     where: { id: task.id },
     data: {
+      status:
+        view.status === AnalysisStatus.Failed
+          ? AppTaskStatus.Failed
+          : AppTaskStatus.Terminated,
       progress: "",
       videos: patchVideos(task.videos, {
         id: videoId,
@@ -308,7 +314,13 @@ async function syncTask(task: {
     return;
   }
 
-  await settle(task, video.id, view, view.message || "检测结束");
+  await settle(
+    task,
+    video.id,
+    view,
+    view.message ||
+      (view.status === AnalysisStatus.Failed ? "检测失败" : "任务已终止"),
+  );
 }
 
 async function syncOnce() {
