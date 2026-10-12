@@ -11,6 +11,8 @@ export type ComponentRow = {
   _end_time: string;
   track_id: string | number;
   name: string;
+  /** Seconds from the start of the video. */
+  start?: number;
   /** Parent interval end, seconds from the start of the video. */
   end?: number;
   duration: number;
@@ -86,11 +88,28 @@ function readXyxy(value: unknown): [number, number, number, number] | null {
   return coords as [number, number, number, number];
 }
 
-function intervalEnd(row: ComponentRow) {
-  if (typeof row.end === "number" && Number.isFinite(row.end)) {
-    return row.end;
+function intervalRange(row: ComponentRow, samples: Sample[]) {
+  const start =
+    typeof row.start === "number" && Number.isFinite(row.start)
+      ? row.start
+      : samples[0]?.at;
+  const end =
+    typeof start === "number" &&
+    typeof row.duration === "number" &&
+    Number.isFinite(row.duration)
+      ? start + row.duration
+      : typeof row.end === "number" && Number.isFinite(row.end)
+        ? row.end
+        : timeToSeconds(row._end_time);
+  return { start, end };
+}
+
+function trackIsVisible(row: ComponentRow, samples: Sample[], time: number) {
+  const { start, end } = intervalRange(row, samples);
+  if (samples.length === 0 || typeof start !== "number") {
+    return false;
   }
-  return timeToSeconds(row._end_time);
+  return time >= start && time <= end;
 }
 
 function trackSamples(row: ComponentRow): Sample[] {
@@ -107,16 +126,9 @@ function trackSamples(row: ComponentRow): Sample[] {
     .sort((left, right) => left.at - right.at);
 }
 
-function trackIsVisible(row: ComponentRow, samples: Sample[], time: number) {
-  if (samples.length === 0) {
-    return false;
-  }
-  return time >= samples[0].at && time <= intervalEnd(row);
-}
-
 /**
  * Each sample is held until the next sample. The last sample stays visible
- * until the parent interval `end`. Nothing is drawn before the first sample.
+ * until `start + duration`. Nothing is drawn before `start`.
  */
 export function visibleBoxes(rows: ComponentRow[], time: number): VisibleBox[] {
   const visible: VisibleBox[] = [];
