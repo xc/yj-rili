@@ -197,7 +197,6 @@ function DetectionVideo({
 }) {
   const [frame, setFrame] = useState<FrameSize | null>(null);
   const [time, setTime] = useState(0);
-  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -237,13 +236,11 @@ function DetectionVideo({
     };
 
     const onPlay = () => {
-      setPlaying(true);
       cancelAnimationFrame(frameId);
       frameId = requestAnimationFrame(loop);
     };
 
     const onStop = () => {
-      setPlaying(false);
       cancelAnimationFrame(frameId);
       readTime();
     };
@@ -282,12 +279,9 @@ function DetectionVideo({
 
   const boxes = frame ? visibleBoxes(tracks, time) : [];
   const dots = frame ? traceDots(tracks, time) : [];
-  const caption = playing
-    ? captionsAt(behaviors, time)
-        .map((row) => row.behavior)
-        .join(" · ")
-    : "";
-  console.log(playing);
+  const caption = captionsAt(behaviors, time)
+    .map((row) => row.behavior)
+    .join(" · ");
 
   return (
     <div className="mx-auto w-full" style={{ maxWidth: 720 }}>
