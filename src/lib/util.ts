@@ -27,6 +27,8 @@ export const taskStatus = {
   "2": "进行中",
   "3": "未通过",
   "4": "已检测",
+  "5": "失败",
+  "6": "已终止",
 } as const;
 
 export enum TaskStatus {
@@ -35,6 +37,8 @@ export enum TaskStatus {
   Ongoing = 2,
   Cancelled = 3,
   Detected = 4,
+  Failed = 5,
+  Terminated = 6,
 }
 
 export function getTaskStatusLabel(status: number | string) {

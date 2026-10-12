@@ -29,6 +29,8 @@ const statusTone: Record<string, { color: string; background: string }> = {
   取消: { color: "#cf1322", background: "#fff2f0" },
   未通过: { color: "#cf1322", background: "#fff2f0" },
   已检测: { color: "#08979c", background: "#e6fffb" },
+  失败: { color: "#cf1322", background: "#fff2f0" },
+  已终止: { color: "#595959", background: "#f5f5f5" },
 };
 
 export function TasksTable({
