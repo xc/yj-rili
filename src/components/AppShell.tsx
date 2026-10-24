@@ -2,6 +2,7 @@
 
 import {
   BankOutlined,
+  BookOutlined,
   ControlOutlined,
   DashboardOutlined,
   LogoutOutlined,
@@ -54,6 +55,11 @@ const items: MenuProps["items"] = [
         label: "分公司管理",
       },
       { key: "/settings/system", icon: <ControlOutlined />, label: "系统设置" },
+      {
+        key: "/settings/dictionary",
+        icon: <BookOutlined />,
+        label: "数据字典",
+      },
     ],
   },
 ];

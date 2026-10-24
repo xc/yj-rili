@@ -1,7 +1,7 @@
 "use client";
 
 import { EditOutlined, EyeOutlined } from "@ant-design/icons";
-import { Button, Input, Modal, Space, Table, message } from "antd";
+import { Button, Input, Modal, Select, Space, Table, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Post } from "@/lib/clientUtil";
@@ -32,10 +32,12 @@ export function TemplatesTable({
   const [viewing, setViewing] = useState<TemplateRow | null>(null);
   const [editing, setEditing] = useState<TemplateRow | null>(null);
   const [draft, setDraft] = useState("");
+  const [editType, setEditType] = useState("");
   const [saving, setSaving] = useState(false);
 
   const openEdit = (record: TemplateRow) => {
     setDraft(jsonText(record.rule));
+    setEditType(record.type);
     setEditing(record);
   };
 
@@ -61,10 +63,18 @@ export function TemplatesTable({
       message.error("JSON 须为对象");
       return;
     }
+    if (!typeOptions.some((item) => item.value === editType)) {
+      message.error("请选择类型");
+      return;
+    }
 
     setSaving(true);
     try {
-      await Post("/api/templates/update", { id: editing.id, rule });
+      await Post("/api/templates/update", {
+        id: editing.id,
+        type: editType,
+        rule,
+      });
       message.success("已保存");
       setEditing(null);
       router.refresh();
@@ -144,6 +154,19 @@ export function TemplatesTable({
         width={720}
         destroyOnHidden
       >
+        <div className="mb-4">
+          <div className="mb-2">类型</div>
+          <Select
+            className="w-full"
+            placeholder="请选择类型"
+            value={editType || undefined}
+            onChange={setEditType}
+            options={typeOptions.map((item) => ({
+              value: item.value,
+              label: item.name,
+            }))}
+          />
+        </div>
         <Input.TextArea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
