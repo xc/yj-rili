@@ -7,6 +7,7 @@ import { useState } from "react";
 import { CreateMaintainerButton } from "@/components/CreateMaintainerButton";
 import { Get, Post } from "@/lib/clientUtil";
 import { detectTypeOptions, type DetectType } from "@/lib/detectType";
+import type { TemplateTypeOption } from "@/lib/templateType";
 import { TASKS_CHANGED_EVENT } from "./taskListQuery";
 
 type ServerVideo = {
@@ -18,9 +19,11 @@ type ServerVideo = {
 export function CreateTaskButton({
   maintainers,
   templates,
+  templateTypes,
 }: {
   maintainers: { id: number; name: string }[];
-  templates: { id: number; name: string }[];
+  templates: { id: number; name: string; type: string }[];
+  templateTypes: TemplateTypeOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,12 +34,15 @@ export function CreateTaskButton({
   const [form] = Form.useForm<{
     name: string;
     maintainerId: number;
+    templateType: string;
     templateId: number;
     detectType: DetectType;
     videoPath?: string;
     videoStartTime?: string;
   }>();
   const videoPath = Form.useWatch("videoPath", form);
+  const templateType = Form.useWatch("templateType", form);
+  const templatesForType = templates.filter((item) => item.type === templateType);
   const router = useRouter();
 
   const close = () => {
@@ -128,13 +134,28 @@ export function CreateTaskButton({
             <Select placeholder="请选择检测类型" options={[...detectTypeOptions]} />
           </Form.Item>
           <Form.Item
+            name="templateType"
+            label="模板类型"
+            rules={[{ required: true, message: "请选择模板类型" }]}
+          >
+            <Select
+              placeholder="请选择模板类型"
+              options={templateTypes.map((item) => ({
+                value: item.value,
+                label: item.name,
+              }))}
+              onChange={() => form.setFieldValue("templateId", undefined)}
+            />
+          </Form.Item>
+          <Form.Item
             name="templateId"
             label="模板"
             rules={[{ required: true, message: "请选择模板" }]}
           >
             <Select
               placeholder="请选择模板"
-              options={templates.map((item) => ({
+              disabled={!templateType}
+              options={templatesForType.map((item) => ({
                 value: item.id,
                 label: item.name,
               }))}
