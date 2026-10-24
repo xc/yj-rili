@@ -1,24 +1,10 @@
 "use client";
 
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
-import {
-  Button,
-  Input,
-  Modal,
-  Spin,
-  Table,
-  Tabs,
-  Tooltip,
-  message,
-} from "antd";
+import { Button, Input, Modal, Spin, Table, Tabs, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import {
-  failedRuleMessages,
-  Get,
-  Post,
-  type FailedRule,
-} from "@/lib/clientUtil";
+import { checkRules, Get, Post, type RuleCheckRow } from "@/lib/clientUtil";
 import { getDetectTypeLabel } from "@/lib/detectType";
 import type { RuleContent } from "@/lib/detectType";
 import {
@@ -370,7 +356,7 @@ export function TaskDetailModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<TaskDetail | null>(null);
-  const [failedRules, setFailedRules] = useState<FailedRule[] | null>(null);
+  const [checkRows, setCheckRows] = useState<RuleCheckRow[] | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
 
@@ -383,7 +369,7 @@ export function TaskDetailModal({
     setLoading(true);
     setDetail(null);
     setComment("");
-    setFailedRules(null);
+    setCheckRows(null);
 
     Get<{ task: TaskDetail }>(`/api/tasks/${taskId}`)
       .then((data) => {
@@ -455,7 +441,7 @@ export function TaskDetailModal({
   const resetAndClose = () => {
     setComment("");
     setDetail(null);
-    setFailedRules([]);
+    setCheckRows(null);
     onClose();
   };
 
@@ -481,8 +467,8 @@ export function TaskDetailModal({
   };
 
   const calculateMatchResult = () => {
-    setFailedRules(
-      failedRuleMessages(detail?.template?.rule, results.filter(isBehaviorRow)),
+    setCheckRows(
+      checkRules(detail?.template?.rule, results.filter(isBehaviorRow)),
     );
   };
 
@@ -684,40 +670,38 @@ export function TaskDetailModal({
             />
           </div>
         </div>
-        <div className="mt-4">
-          <Button type="primary" onClick={calculateMatchResult}>
-            查看匹配结果
-          </Button>
-          {failedRules && (
-            <div>
-              {failedRules.length > 0 ? (
-                <div className="mt-2 text-sm" style={{ color: "#cf1322" }}>
-                  {failedRules.map((item, index) => (
-                    <div key={`${item.id}-${index}`}>
-                      规则【
-                      <Tooltip
-                        title={
-                          <pre className="m-0 whitespace-pre-wrap text-xs">
-                            {JSON.stringify(item.rule, null, 2)}
-                          </pre>
-                        }
-                      >
-                        <span className="cursor-help underline decoration-dotted">
-                          {item.id}
-                        </span>
-                      </Tooltip>
-                      {item.ruleName ? ` ${item.ruleName}` : ""}】未通过
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-2 text-sm" style={{ color: "#389e0d" }}>
-                  检测通过!
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {detail?.detectType === "behavior" ? (
+          <div className="mt-4">
+            <Button type="primary" onClick={calculateMatchResult}>
+              校验
+            </Button>
+            {checkRows ? (
+              <Table
+                className="rili-task-table mt-2"
+                size="small"
+                pagination={false}
+                dataSource={checkRows}
+                rowKey={(row, index) => `${row.id}-${index}`}
+                columns={[
+                  { title: "ID", dataIndex: "id", key: "id", width: 80 },
+                  { title: "名称", dataIndex: "name", key: "name", width: 220 },
+                  {
+                    title: "结果",
+                    dataIndex: "result",
+                    key: "result",
+                    width: 100,
+                    render: (result: RuleCheckRow["result"]) => (
+                      <span style={{ color: result === "通过" ? "#389e0d" : "#cf1322" }}>
+                        {result}
+                      </span>
+                    ),
+                  },
+                  { title: "详情", dataIndex: "detail", key: "detail" },
+                ]}
+              />
+            ) : null}
+          </div>
+        ) : null}
         <div className="mt-4">
           <div className="mb-2">备注</div>
           {canReview ? (

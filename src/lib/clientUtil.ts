@@ -55,12 +55,27 @@ export type MatchBehavior = {
   _end_time?: string;
 };
 
-export type FailedRule = {
+export type RuleCheckRow = {
   id: string;
-  kind: "存在" | "序列";
-  ruleName: string;
-  rule: RuleItem;
+  name: string;
+  result: "通过" | "未通过";
+  detail: string;
 };
+
+function ruleDetail(rule: RuleItem) {
+  if (rule.type === "exist") {
+    const condition = rule.condition;
+    const parts = [
+      condition?.area ? `区域：${condition.area}` : "",
+      condition?.objectName ? `对象：${condition.objectName}` : "",
+      condition?.minTime != null ? `最短时间：${condition.minTime}` : "",
+    ].filter(Boolean);
+    return parts.join("；");
+  }
+  return (rule.condition ?? [])
+    .map((step, index) => `${index + 1}. ${step.area} / ${step.objectName}`)
+    .join(" → ");
+}
 
 function sameStep(
   row: MatchBehavior,
@@ -99,30 +114,19 @@ function sequencePasses(rule: SequenceRule, rows: MatchBehavior[]) {
   return true;
 }
 
-export function failedRuleMessages(
+export function checkRules(
   rule: { ruleContent?: RuleContent } | null | undefined,
   rows: MatchBehavior[],
 ) {
   const items = rule?.ruleContent ?? [];
-  const failed: FailedRule[] = [];
-  for (const item of items) {
-    if (item.type === "exist" && !existPasses(item, rows)) {
-      failed.push({
-        id: item.id,
-        kind: "存在",
-        ruleName: item.ruleName,
-        rule: item,
-      });
-    }
-    if (item.type === "sequence" && !sequencePasses(item, rows)) {
-      failed.push({
-        id: item.id,
-        kind: "序列",
-        ruleName: item.ruleName,
-        rule: item,
-      });
-    }
-  }
-  console.log(failed);
-  return failed;
+  return items.map((item): RuleCheckRow => {
+    const passed =
+      item.type === "exist" ? existPasses(item, rows) : sequencePasses(item, rows);
+    return {
+      id: item.id,
+      name: item.ruleName,
+      result: passed ? "通过" : "未通过",
+      detail: ruleDetail(item),
+    };
+  });
 }
