@@ -1,11 +1,26 @@
 "use client";
 
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
-import { Button, Input, Modal, Spin, Table, Tabs, message } from "antd";
+import {
+  Button,
+  Input,
+  Modal,
+  Spin,
+  Table,
+  Tabs,
+  Tooltip,
+  message,
+} from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { Get, Post } from "@/lib/clientUtil";
+import {
+  failedRuleMessages,
+  Get,
+  Post,
+  type FailedRule,
+} from "@/lib/clientUtil";
 import { getDetectTypeLabel } from "@/lib/detectType";
+import type { RuleContent } from "@/lib/detectType";
 import {
   boxPercents,
   timeToSeconds,
@@ -72,15 +87,11 @@ type LogRow = {
   offset?: string;
   message: string;
 };
-
 type TaskTemplate = {
   id: number;
   name: string;
   rule: {
-    required?: {
-      behavior?: string[];
-      component?: string[];
-    };
+    ruleContent: RuleContent;
   };
 };
 
@@ -164,28 +175,17 @@ function captionsAt(rows: BehaviorRow[], time: number) {
 }
 
 function nameCounts(rows: ComponentRow[]) {
-  const groups = new Map<
-    string,
-    { name: string; trackId: string; count: number }
-  >();
+  const groups = new Map<string, Set<string>>();
   for (const row of rows) {
     const name = row.name || "—";
     const trackId = row.track_id == null ? "" : String(row.track_id);
-    const key = `${trackId}\0${name}`;
-    const current = groups.get(key);
-    if (current) {
-      current.count += 1;
-    } else {
-      groups.set(key, { name, trackId, count: 1 });
-    }
+    const trackIds = groups.get(name) ?? new Set<string>();
+    trackIds.add(trackId);
+    groups.set(name, trackIds);
   }
-  return [...groups.values()].sort((left, right) => {
-    const byName = left.name.localeCompare(right.name, "zh");
-    if (byName !== 0) {
-      return byName;
-    }
-    return left.trackId.localeCompare(right.trackId, "zh", { numeric: true });
-  });
+  return [...groups.entries()]
+    .map(([name, trackIds]) => ({ name, count: trackIds.size }))
+    .sort((left, right) => left.name.localeCompare(right.name, "zh"));
 }
 
 function DetectionVideo({
@@ -300,16 +300,6 @@ function DetectionVideo({
             {caption}
           </div>
         ) : null}
-        {boxes.length > 0 ? (
-          <div className="absolute top-0 right-0 z-10 bg-black/50 p-2 text-center text-sm leading-6 text-white">
-            {boxes.map((box) => (
-              <div key={box.id}>
-                {box.trackId} {box.name}
-                {Number.isFinite(box.conf) ? ` ${box.conf.toFixed(2)}` : ""}
-              </div>
-            ))}
-          </div>
-        ) : null}
         <video
           ref={videoRef}
           className={
@@ -350,7 +340,12 @@ function DetectionVideo({
                     border: "2px solid #03fcfc",
                     backgroundColor: "#03fcfc2e",
                   }}
-                />
+                >
+                  <div className="absolute -top-6 -left-3 z-10 bg-black/50 px-1 text-xs leading-5 whitespace-nowrap text-white">
+                    {box.trackId} {box.name}
+                    {Number.isFinite(box.conf) ? ` ${box.conf.toFixed(2)}` : ""}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -375,6 +370,7 @@ export function TaskDetailModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<TaskDetail | null>(null);
+  const [failedRules, setFailedRules] = useState<FailedRule[] | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
 
@@ -387,6 +383,7 @@ export function TaskDetailModal({
     setLoading(true);
     setDetail(null);
     setComment("");
+    setFailedRules(null);
 
     Get<{ task: TaskDetail }>(`/api/tasks/${taskId}`)
       .then((data) => {
@@ -458,6 +455,7 @@ export function TaskDetailModal({
   const resetAndClose = () => {
     setComment("");
     setDetail(null);
+    setFailedRules([]);
     onClose();
   };
 
@@ -480,6 +478,12 @@ export function TaskDetailModal({
     } finally {
       setSaving(false);
     }
+  };
+
+  const calculateMatchResult = () => {
+    setFailedRules(
+      failedRuleMessages(detail?.template?.rule, results.filter(isBehaviorRow)),
+    );
   };
 
   return (
@@ -508,6 +512,8 @@ export function TaskDetailModal({
             ) : null}
           </div>
           <div className="mt-1 text-sm font-normal text-black/45">
+            模板：{detail?.template?.name || "—"}
+            <span className="mx-2">·</span>
             创建时间：{detail?.createdAt ?? "—"}
             <span className="mx-2">·</span>
             检测类型：
@@ -564,16 +570,14 @@ export function TaskDetailModal({
                         <div className="mb-2 flex flex-wrap gap-2 text-sm">
                           {nameCounts(componentTracks).map((item) => (
                             <span
-                              key={`${item.trackId}:${item.name}`}
+                              key={item.name}
                               className="rounded px-2 py-0.5"
                               style={{
                                 color: "#08979c",
                                 background: "#e6fffb",
                               }}
                             >
-                              {item.name}
-                              {item.trackId ? ` ${item.trackId}` : ""} ×{" "}
-                              {item.count}
+                              {item.name} × {item.count}
                             </span>
                           ))}
                         </div>
@@ -630,26 +634,31 @@ export function TaskDetailModal({
                                   width: 120,
                                 },
                               ]),
-                          {
-                            title: "匹配?",
-                            key: "required",
-                            width: 72,
-                            align: "center" as const,
-                            render: (
-                              _: unknown,
-                              record: BehaviorRow | ComponentRow,
-                            ) =>
-                              isRequiredHit(
-                                detail?.detectType === "behavior"
-                                  ? "behavior"
-                                  : "component",
-                                record,
-                                requiredBehaviors,
-                                requiredComponents,
-                              ) ? (
-                                <CheckOutlined style={{ color: "#389e0d" }} />
-                              ) : null,
-                          },
+                          // {
+                          //   title: "匹配?",
+                          //   key: "required",
+                          //   width: 72,
+                          //   align: "center" as const,
+                          //   render: (
+                          //     _: unknown,
+                          //     record: BehaviorRow | ComponentRow,
+                          //   ) =>
+                          //     calculateMatch(
+                          //       detail?.detectType,
+                          //       record,
+                          //       detail?.template,
+                          //     ),
+                          //   // isRequiredHit(
+                          //   //   detail?.detectType === "behavior"
+                          //   //     ? "behavior"
+                          //   //     : "component",
+                          //   //   record,
+                          //   //   requiredBehaviors,
+                          //   //   requiredComponents,
+                          //   // ) ? (
+                          //   //   <CheckOutlined style={{ color: "#389e0d" }} />
+                          //   // ) : null,
+                          // },
                         ]}
                       />
                     </>
@@ -674,6 +683,40 @@ export function TaskDetailModal({
               ]}
             />
           </div>
+        </div>
+        <div className="mt-4">
+          <Button type="primary" onClick={calculateMatchResult}>
+            查看匹配结果
+          </Button>
+          {failedRules && (
+            <div>
+              {failedRules.length > 0 ? (
+                <div className="mt-2 text-sm" style={{ color: "#cf1322" }}>
+                  {failedRules.map((item, index) => (
+                    <div key={`${item.id}-${index}`}>
+                      规则【
+                      <Tooltip
+                        title={
+                          <pre className="m-0 whitespace-pre-wrap text-xs">
+                            {JSON.stringify(item.rule, null, 2)}
+                          </pre>
+                        }
+                      >
+                        <span className="cursor-help underline decoration-dotted">
+                          {item.id}
+                        </span>
+                      </Tooltip>
+                      {item.ruleName ? ` ${item.ruleName}` : ""}】未通过
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 text-sm" style={{ color: "#389e0d" }}>
+                  检测通过!
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="mt-4">
           <div className="mb-2">备注</div>

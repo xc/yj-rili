@@ -57,10 +57,19 @@ model YjTask {
 model YjTaskTemplate {
   id    Int      @id @default(autoincrement())
   name  String   @db.VarChar(128)
+  type  String   @default("") @db.VarChar(32)
   rule  Json     @default("{}")
   tasks YjTask[]
 
   @@map("yj_task_template")
+}
+
+model YjList {
+  id    Int    @id @default(autoincrement())
+  key   String @unique @db.VarChar(64)
+  value String @db.Text
+
+  @@map("yj_list")
 }
 
 model YjMaintainer {

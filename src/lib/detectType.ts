@@ -22,3 +22,25 @@ export function analysisTypeForDetectType(detectType: DetectType) {
 export function getDetectTypeLabel(value: string) {
   return detectTypeOptions.find((item) => item.value === value)?.label ?? value;
 }
+
+export type ExistRule = {
+  id: string;
+  type: "exist";
+  ruleName: string;
+  condition: {
+    area: string;
+    objectName: string;
+    minTime?: number;
+  };
+};
+
+export type SequenceRule = {
+  id: string;
+  type: "sequence";
+  ruleName: string;
+  condition: { area: string; objectName: string }[];
+};
+
+export type RuleItem = ExistRule | SequenceRule;
+
+export type RuleContent = RuleItem[];
